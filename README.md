@@ -1,28 +1,9 @@
 # VisionX_CXR-CAD
 Multi-label chest X-ray disease detection using NIH ChestX-ray14, DenseNet, EfficientNet, Grad-CAM, FastAPI, and Streamlit.
 
-## GitHub Workflow
+## Contributing
 
-To keep the project organized and protect the `main` branch, all development should be done through separate branches and Pull Requests.
-
-1. Create a new branch for your task.
-   - Example: `feature/data-preprocessing`
-   - Example: `feature/gradcam`
-   - Example: `fix/api-error`
-
-2. Make and commit your changes on that branch.
-
-3. Push the branch to GitHub and open a Pull Request into `main`.
-
-4. At least one teammate should review and approve the Pull Request.
-
-5. Resolve any review comments before merging.
-
-6. Merge the Pull Request using **Squash and merge**.
-
-7. Before starting a new task, update your local `main` branch.
-
-Please do not push directly to `main`.
+Before starting a task, read the [GitHub Workflow Guides](docs/github-workflow/README.md) for commit style, task creation, branch naming, pull requests, reviews, and conflict resolution.
 
 ## Team
 
