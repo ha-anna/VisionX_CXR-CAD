@@ -36,5 +36,5 @@ We are a team of Computer Science and Engineering students at Sogang University 
 - Ha Anna Maria (Team Leader) - [ha-anna](https://github.com/ha-ana)
 - Maksutova Aibike - [bimoonity](https://github.com/bimoonity)
 - Zaripov Damir - [dkapro](https://github.com/dkapro)
-- Mukhiddinova Malika - [](https://github.com/)
+- Mukhiddinova Malika - [likamuradovna](https://github.com/likamuradovna)
 - Sadullaeva Madina - [madina1727](https://github.com/madina1727)
