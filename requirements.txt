@@ -1,31 +1,31 @@
 # Deep learning
-torch
-torchvision
+torch==2.14.1
+torchvision==0.29.1
 
 # Data handling and evaluation
-numpy
-pandas
-scikit-learn
-matplotlib
+numpy==2.4.6
+pandas==3.0.6
+scikit-learn==1.9.1
+matplotlib==3.11.2
 
 # Medical / image processing
-pydicom
-opencv-python-headless
-Pillow
+pydicom==3.0.2
+opencv-python-headless==5.0.0.93
+Pillow==12.3.0
 
 # API
-fastapi
-uvicorn
-python-multipart
-httpx
+fastapi==0.142.2
+uvicorn==0.54.0
+python-multipart==0.0.32
+httpx==0.28.1
 
 # Dashboard
-streamlit
+streamlit==1.65.0
 
 # Testing
-pytest
-pytest-cov
+pytest==9.1.1
+pytest-cov==7.1.0
 
 # Development tools
-ruff
-mypy
+ruff==0.16.10
+mypy==2.4.0
