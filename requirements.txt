@@ -1,0 +1,31 @@
+# Deep learning
+torch
+torchvision
+
+# Data handling and evaluation
+numpy
+pandas
+scikit-learn
+matplotlib
+
+# Medical / image processing
+pydicom
+opencv-python-headless
+Pillow
+
+# API
+fastapi
+uvicorn
+python-multipart
+httpx
+
+# Dashboard
+streamlit
+
+# Testing
+pytest
+pytest-cov
+
+# Development tools
+ruff
+mypy
