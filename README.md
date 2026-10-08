@@ -59,3 +59,12 @@ We are a team of Computer Science and Engineering students at Sogang University 
 - Zaripov Damir - [dkapro](https://github.com/dkapro)
 - Mukhiddinova Malika - [likamuradovna](https://github.com/likamuradovna)
 - Sadullaeva Madina - [madina1727](https://github.com/madina1727)
+
+
+## Dev Container setup
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and make sure it is running.
+2. Install [VS Code](https://code.visualstudio.com/) and the **Dev Containers** extension.
+3. Clone the repository and open the folder in VS Code.
+4. Press `F1` and select **Dev Containers: Reopen in Container**.
+5. Wait for the first build to finish. Python and all dependencies are then available in the container.
