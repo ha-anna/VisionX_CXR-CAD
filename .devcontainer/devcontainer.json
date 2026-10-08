@@ -1,0 +1,37 @@
+{
+    "name": "VisionX CXR-CAD",
+    "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+        "args": {
+            "TORCH_INDEX_URL": "https://download.pytorch.org/whl/cpu"
+        }
+    },
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+    "overrideCommand": true,
+    "forwardPorts": [
+        8000,
+        8501
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+            "ms-python.python",
+            "ms-python.vscode-pylance",
+            "charliermarsh.ruff",
+            "ms-toolsai.jupyter"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                    "editor.formatOnSave": true
+                },
+                "python.testing.pytestEnabled": true,
+                "python.testing.unittestEnabled": false,
+                "python.testing.pytestArgs": ["tests"]
+            }
+        }
+    }
+}
