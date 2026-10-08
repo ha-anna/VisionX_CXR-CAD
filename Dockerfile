@@ -1,5 +1,8 @@
 FROM python:3.11
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /workspace
 
 COPY requirements.txt .
