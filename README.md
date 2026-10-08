@@ -22,6 +22,25 @@ models/         local weights and checkpoints — ignored by Git
 
 Datasets, model weights (`*.pt`, `*.pth`, `*.ckpt`, `*.onnx`), and generated outputs (`outputs/`, `predictions/`, `gradcam_outputs/`, `runs/`, `wandb/`) are excluded by `.gitignore`. Never commit patient data.
 
+## Development commands
+
+Run these from the repository root inside the Dev Container:
+
+| Command | Purpose |
+| --- | --- |
+| `make install` | Install dependencies from `requirements.txt` |
+| `make lint` | Check Python lint rules |
+| `make format` | Format Python files |
+| `make typecheck` | Check types in `src/` |
+| `make test` | Run tests in `tests/` |
+| `make check` | Run lint, formatting verification, type checking, and tests |
+
+Ruff and mypy use the settings in `pyproject.toml`.
+`make check` stops on the first failure and does not modify files.
+
+Dependencies are installed during the container build, so `make install`
+is usually only needed after changing `requirements.txt`.
+
 ## Contributing
 
 Before starting a task, read the [GitHub Workflow Guides](docs/github-workflow/README.md) for commit style, task creation, branch naming, pull requests, reviews, and conflict resolution.
