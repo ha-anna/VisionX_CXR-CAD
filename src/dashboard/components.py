@@ -61,7 +61,7 @@ def render_images(image, result, image_focus=False, preview=False):
     if heatmap is not None and selection == "Compare":
         original_col, explanation_col = st.columns(2)
         with original_col:
-            st.image(image, caption="Original image", use_container_width=True)
+            st.image(image, caption="Original image", width="stretch")
         with explanation_col:
             st.image(
                 heatmap,
@@ -70,16 +70,16 @@ def render_images(image, result, image_focus=False, preview=False):
                     if preview
                     else f"Grad-CAM · {result['top1_disease'].replace('_', ' ')}"
                 ),
-                use_container_width=True,
+                width="stretch",
             )
     elif selection == "Explanation" and heatmap is not None:
         st.image(
             heatmap,
             caption="Illustrative overlay" if preview else "Grad-CAM explanation",
-            use_container_width=True,
+            width="stretch",
         )
     else:
-        st.image(image, caption="Original image", use_container_width=True)
+        st.image(image, caption="Original image", width="stretch")
 
     with compact_section("explanation"):
         if result and heatmap is None:
