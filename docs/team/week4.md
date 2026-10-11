@@ -25,6 +25,3 @@ Submitted the requested short planning document.
 
 ### Madina
 Did not submit the requested short planning document during this reporting period.
-
-### Evidence and outstanding information
--
