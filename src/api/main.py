@@ -31,15 +31,12 @@ async def predict(file: UploadFile = File(...)):
 
     try:
         image = Image.open(io.BytesIO(data))
-    except (UnidentifiedImageError, OSError):
-        raise HTTPException(status_code=400, detail="File is not a valid image.")
 
-    if image.format not in ALLOWED_FORMATS:
-        raise HTTPException(status_code=415, detail="Only PNG and JPEG are supported.")
+        if image.format not in ALLOWED_FORMATS:
+            raise HTTPException(status_code=415, detail="Only PNG and JPEG are supported.")
 
-    try:
         image.load()
-    except OSError:
+    except (UnidentifiedImageError, OSError):
         raise HTTPException(status_code=400, detail="File is not a valid image.")
 
     scores = {label: 0.05 for label in LABELS}
