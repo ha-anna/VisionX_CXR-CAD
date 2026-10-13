@@ -1,7 +1,7 @@
 PYTHON ?= python
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint format format-check typecheck test check
+.PHONY: help install lint format format-check typecheck test check dashboard
 
 help:
 	@echo "install       Install project dependencies"
@@ -35,3 +35,6 @@ check:
 	$(MAKE) format-check
 	$(MAKE) typecheck
 	$(MAKE) test
+
+dashboard:
+	python -m streamlit run src/dashboard/dashboard.py --server.address=0.0.0.0 --server.port=8501
