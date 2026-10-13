@@ -1,16 +1,14 @@
-import base64
 import io
 import os
 import time
 from contextlib import asynccontextmanager
-from starlette.concurrency import run_in_threadpool
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 from src.api.config import ALLOWED_FORMATS, MAX_UPLOAD_BYTES
 from src.api.schemas import (
-    LABELS,
     HealthResponse,
     PredictResponse,
     Top1,

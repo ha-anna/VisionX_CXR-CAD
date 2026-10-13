@@ -44,10 +44,7 @@ def prediction_request(raw, name, mime):
 
     dashboard_data = {
         "predictions": data["scores"],
-        "detected_diseases": [
-            detection["name"]
-            for detection in data["detected_diseases"]
-        ],
+        "detected_diseases": [detection["name"] for detection in data["detected_diseases"]],
         "top1_disease": data["top1"]["name"],
         "gradcam_heatmap": data["heatmap_base64"],
         "inference_time_ms": data["inference_time_ms"],
