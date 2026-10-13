@@ -172,6 +172,9 @@ datasets/**
 models/**
 checkpoints/
 weights/
+configs/
+splits/
+reports/
 
 !models/README.md
 !models/.gitkeep
