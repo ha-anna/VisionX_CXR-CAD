@@ -28,12 +28,22 @@ Run these from the repository root inside the Dev Container:
 
 | Command | Purpose |
 | --- | --- |
+| `make help` | Show the command help |
 | `make install` | Install dependencies from `requirements.txt` |
 | `make lint` | Check Python lint rules |
+| `make lint-fix` | Automatically fix supported lint issues |
 | `make format` | Format Python files |
+| `make format-check` | Check formatting without changing files |
 | `make typecheck` | Check types in `src/` |
 | `make test` | Run tests in `tests/` |
 | `make check` | Run lint, formatting verification, type checking, and tests |
+| `make dashboard` | Start the Streamlit dashboard locally on port `8501` |
+| `make docker-build` | Build Docker Compose service images |
+| `make docker-up` | Build images and start Docker Compose services in the background |
+| `make docker-down` | Stop and remove Docker Compose containers and networks |
+| `make docker-logs` | Follow logs from Docker Compose services |
+
+Run these commands from the project root. Docker commands require Docker to be running (for example, through Docker Desktop on macOS). Press `Ctrl+C` to stop following logs; the services will keep running.
 
 Ruff and mypy use the settings in `pyproject.toml`.
 `make check` stops on the first failure and does not modify files.
