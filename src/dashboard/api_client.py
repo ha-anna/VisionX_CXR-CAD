@@ -43,6 +43,7 @@ def prediction_request(raw, name, mime):
     data = response.json()
 
     dashboard_data = {
+        "model_version": data["model_version"],
         "predictions": data["scores"],
         "detected_diseases": [detection["name"] for detection in data["detected_diseases"]],
         "top1_disease": data["top1"]["name"],

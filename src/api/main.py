@@ -68,6 +68,7 @@ async def predict(file: UploadFile = File(...)):
     top_label = result["top_label"]
 
     return PredictResponse(
+        model_version=result["model_version"],
         is_stub=False,
         scores=scores,
         detected_diseases=[],
