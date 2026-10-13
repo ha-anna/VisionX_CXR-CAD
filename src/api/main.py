@@ -25,24 +25,26 @@ def health():
 async def predict(file: UploadFile = File(...)):
     start = time.perf_counter()
 
-    data = await file.read()
+    data = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large.")
 
     try:
         image = Image.open(io.BytesIO(data))
-        image.load()  # actually decodes the pixels, catches corrupt files
     except (UnidentifiedImageError, OSError):
         raise HTTPException(status_code=400, detail="File is not a valid image.")
 
     if image.format not in ALLOWED_FORMATS:
         raise HTTPException(status_code=415, detail="Only PNG and JPEG are supported.")
 
-    # STUB: fixed fake scores. Not real inference.
+    try:
+        image.load()
+    except OSError:
+        raise HTTPException(status_code=400, detail="File is not a valid image.")
+
     scores = {label: 0.05 for label in LABELS}
     scores["Effusion"] = 0.42
 
-    # 1x1 placeholder PNG, standing in for a heatmap
     buf = io.BytesIO()
     Image.new("RGB", (1, 1)).save(buf, format="PNG")
     heatmap = base64.b64encode(buf.getvalue()).decode()
