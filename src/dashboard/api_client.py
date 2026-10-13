@@ -40,4 +40,17 @@ def prediction_request(raw, name, mime):
     )
     response.raise_for_status()
 
-    return validate_response(response.json())
+    data = response.json()
+
+    dashboard_data = {
+        "predictions": data["scores"],
+        "detected_diseases": [
+            detection["name"]
+            for detection in data["detected_diseases"]
+        ],
+        "top1_disease": data["top1"]["name"],
+        "gradcam_heatmap": data["heatmap_base64"],
+        "inference_time_ms": data["inference_time_ms"],
+    }
+
+    return validate_response(dashboard_data)
