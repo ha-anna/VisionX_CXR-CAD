@@ -1,7 +1,7 @@
 PYTHON ?= python
 .DEFAULT_GOAL := help
 
-.PHONY: help install lint lint-fix format format-check typecheck test check dashboard docker-build docker-up docker-down docker-logs
+.PHONY: help install lint lint-fix format format-check typecheck test check dashboard api docker-build docker-up docker-down docker-logs
 
 help:
 	@echo "Usage: make <command>"
@@ -20,6 +20,7 @@ help:
 	@echo ""
 	@echo "Local development"
 	@echo "  dashboard     Start Streamlit dashboard on port 8501"
+	@echo "  api           Start FastAPI on port 8000 with auto-reload"
 	@echo ""
 	@echo "Docker (requires Docker to be running)"
 	@echo "  docker-build  Build service images"
@@ -58,6 +59,9 @@ check:
 
 dashboard:
 	python -m streamlit run src/dashboard/dashboard.py --server.address=0.0.0.0 --server.port=8501
+
+api:
+	$(PYTHON) -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 docker-build:
 	docker compose build
