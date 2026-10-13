@@ -38,6 +38,7 @@ Run these from the repository root inside the Dev Container:
 | `make test` | Run tests in `tests/` |
 | `make check` | Run lint, formatting verification, type checking, and tests |
 | `make dashboard` | Start the Streamlit dashboard locally on port `8501` |
+| `make api` | Start FastAPI locally on port `8000` with auto-reload |
 | `make docker-build` | Build Docker Compose service images |
 | `make docker-up` | Build images and start Docker Compose services in the background |
 | `make docker-down` | Stop and remove Docker Compose containers and networks |

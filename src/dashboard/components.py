@@ -109,7 +109,8 @@ def render_detections(result, preview=False):
             st.markdown(f'<div class="vx-chips">{chips}</div>', unsafe_allow_html=True)
         else:
             st.write(
-                "Detection thresholds are not configured. Model scores and the Grad-CAM overlay are shown below."
+                "Detection thresholds are not configured. Model scores and "
+                "the Grad-CAM overlay are shown below."
             )
             st.caption("This does not establish that the image is clinically normal.")
 
