@@ -16,9 +16,9 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     environment:
-      MODEL_BUNDLE_DIR: /models/demo
+      MODEL_BUNDLE_DIR: "${MODEL_BUNDLE_DIR:-/workspace/models/test}"
     volumes:
-      - ./models/demo:/models/demo:ro
+      - ./models:/models:ro
     healthcheck:
       test:
         - CMD

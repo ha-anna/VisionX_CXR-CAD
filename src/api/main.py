@@ -2,7 +2,9 @@ import io
 import os
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
@@ -15,13 +17,31 @@ from src.api.schemas import (
 )
 from src.models.inference import VisionXPredictor
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(PROJECT_ROOT / ".env")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    bundle_dir = os.getenv("MODEL_BUNDLE_DIR", "models/demo")
+    configured_path = os.getenv("MODEL_BUNDLE_DIR", "models/test")
+    bundle_dir = Path(configured_path).expanduser()
+
+    if not bundle_dir.is_absolute():
+        bundle_dir = PROJECT_ROOT / bundle_dir
+
+    bundle_dir = bundle_dir.resolve()
+
+    for filename in ("model.pth", "config.json"):
+        if not (bundle_dir / filename).is_file():
+            raise FileNotFoundError(f"Missing {filename} in model bundle: {bundle_dir}")
+
+    print(f"Loading model bundle: {bundle_dir}")
     app.state.predictor = VisionXPredictor(bundle_dir, device="cpu")
-    yield
-    del app.state.predictor
+
+    try:
+        yield
+    finally:
+        del app.state.predictor
 
 
 app = FastAPI(
