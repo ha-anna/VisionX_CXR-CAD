@@ -58,7 +58,7 @@ check:
 	$(MAKE) test
 
 dashboard:
-	python -m streamlit run src/dashboard/dashboard.py --server.address=0.0.0.0 --server.port=8501
+	python -m streamlit run src/dashboard/app.py --server.address=0.0.0.0 --server.port=8501
 
 api:
 	$(PYTHON) -m uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000

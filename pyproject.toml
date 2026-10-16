@@ -8,7 +8,8 @@ extend-exclude = [
     "metadata",
     "configs",
     "checkpoints",
-    "i18n.py"
+    "i18n.py",
+    "styles.py"
 ]
 
 [tool.ruff.lint]
