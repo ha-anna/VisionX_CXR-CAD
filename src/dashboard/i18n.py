@@ -3,6 +3,9 @@
 import streamlit as st
 
 KO = {
+    "Display and demo options": "화면 및 데모 설정",
+    "Findings summary": "소견 요약",
+    "Scores range from 0 to 1; they are not disease probabilities. A dot marks a detected finding. Detection uses disease-specific thresholds from the API.": "점수 범위는 0~1이며 질환의 확률이 아닙니다. 점 표시는 탐지된 소견을 나타냅니다. 탐지에는 API의 질환별 임계값을 사용합니다.",
     "VisionX\'s CXR-CAD System": "VisionX의 CXR-CAD 시스템",
     "Upload a chest X-ray, analyze it, and review the model's findings.": "흉부 X선 영상을 업로드하고 분석하여 모델 결과를 확인하세요.",
     "Enlarge image viewer": "영상 크게 보기",

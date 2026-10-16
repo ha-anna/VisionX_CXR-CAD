@@ -9,7 +9,7 @@ from image_utils import decode_image
 from PIL import Image, UnidentifiedImageError
 from preview import SAMPLE_SOURCE, preview_images, preview_response
 from settings import MAX_BYTES
-from styles import apply_styles, compact_section
+from styles import apply_styles, caption, compact_section, notice
 
 
 def toggle_language():
@@ -18,45 +18,66 @@ def toggle_language():
     )
 
 
+def exit_preview_for_analysis():
+    """Run before the page rerenders so the toggle and results agree."""
+    st.session_state["preview_toggle"] = False
+    st.session_state["preview_mode"] = False
+    st.session_state.pop("result", None)
+
+
+def toggle_theme():
+    st.session_state["ui_theme"] = (
+        "dark" if st.session_state.get("ui_theme", "light") == "light" else "light"
+    )
+
+
 def main():
     st.set_page_config(page_title="VisionX's CXR-CAD System", page_icon="🩻", layout="wide")
     st.session_state.setdefault("ui_language", "en")
-    apply_styles(True)
+    st.session_state.setdefault("ui_theme", "light")
+    apply_styles(st.session_state.get("image_focus", False))
 
     with compact_section("header"):
-        title_col, language_col = st.columns([5, 1])
-        with title_col:
-            st.markdown(
-                '<h1 class="vx-title"><a href="https://github.com/ha-anna/VisionX_CXR-CAD" '
-                'target="_blank" rel="noopener noreferrer" '
-                'aria-label="VisionX GitHub repository">VisionX\'s CXR-CAD System↗</a></h1>',
-                unsafe_allow_html=True,
-            )
-        with language_col:
+        with st.container(key="language-toolbar", horizontal=True, horizontal_alignment="right"):
             english = st.session_state["ui_language"] == "en"
+            dark = st.session_state["ui_theme"] == "dark"
+            theme_label = (
+                ("Light mode" if dark else "Dark mode")
+                if english
+                else ("라이트 모드" if dark else "다크 모드")
+            )
+            st.button(
+                theme_label,
+                icon=":material/light_mode:" if dark else ":material/dark_mode:",
+                key="theme_toggle",
+                on_click=toggle_theme,
+            )
             st.button(
                 "한국어" if english else "English",
                 key="language_toggle",
                 help="한국어로 전환" if english else "Switch to English",
                 on_click=toggle_language,
             )
-        st.caption(t("Upload a chest X-ray, analyze it, and review the model's findings."))
-        image_focus = st.checkbox(
-            t("Enlarge image viewer"),
-            value=False,
-            key="image_focus",
-            help=t("Give images more space and place results below them."),
+        st.markdown(
+            '<h1 class="vx-title"><a href="https://github.com/ha-anna/VisionX_CXR-CAD" '
+            'target="_blank" rel="noopener noreferrer" '
+            'aria-label="VisionX GitHub repository">VisionX\'s CXR-CAD System ↗</a></h1>',
+            unsafe_allow_html=True,
         )
+        caption(t("Upload a chest X-ray, analyze it, and review the model's findings."))
+        st.space(4)
+        image_focus = st.checkbox(t("Enlarge image viewer"), value=False, key="image_focus")
         with st.expander(t("Demo options")):
             preview = st.toggle(t("Show illustrative results"), value=False, key="preview_toggle")
-            st.caption(t("Preview the interface without sending an image for analysis."))
+            caption(t("Preview the interface without sending an image for analysis."))
+            st.space(4)
         if preview:
-            st.warning(
-                t("Preview mode · Scores are illustrative and are not predictions for your image.")
+            notice(
+                "info",
+                t("Preview mode · Scores are illustrative and are not predictions for your image."),
             )
         st.divider()
 
-    apply_styles(image_focus)
     left, right = (
         (st.container(), st.container()) if image_focus else st.columns([1, 1.05], gap="large")
     )
@@ -86,7 +107,7 @@ def main():
                     if len(raw) > MAX_BYTES:
                         raise ValueError(t("Please choose an image smaller than 10 MB."))
                     image = decode_image(raw)
-                    st.caption(
+                    caption(
                         t(
                             "{name} · {width} × {height} pixels",
                             name=uploaded.name,
@@ -94,11 +115,19 @@ def main():
                             height=image.height,
                         )
                     )
+                    st.space(1)
                 except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError):
-                    st.error(
-                        t("Unable to read this image. Use a valid PNG/JPG smaller than 10 MB.")
+                    notice(
+                        "error",
+                        t("Unable to read this image. Use a valid PNG/JPG smaller than 10 MB."),
                     )
-            if st.button(t("Analyze image"), type="primary", disabled=image is None):
+                    st.space(1)
+            if st.button(
+                t("Analyze image"),
+                type="primary",
+                disabled=image is None,
+                on_click=exit_preview_for_analysis,
+            ):
                 st.session_state.pop("result", None)
                 try:
                     with st.spinner(t("Analyzing image…")):
@@ -108,13 +137,16 @@ def main():
                             "image/png" if raw.startswith(b"\x89PNG") else "image/jpeg",
                         )
                 except requests.Timeout:
-                    st.error(t("Analysis took too long. Please try again."))
+                    notice("error", t("Analysis took too long. Please try again."))
                 except requests.RequestException:
-                    st.error(
-                        t("The analysis service is unavailable. Please try again in a moment.")
+                    notice(
+                        "error",
+                        t("The analysis service is unavailable. Please try again in a moment."),
                     )
                 except ValueError:
-                    st.error(t("The service returned an incomplete result. Please try again."))
+                    notice(
+                        "error", t("The service returned an incomplete result. Please try again.")
+                    )
         result = preview_response() if preview else st.session_state.get("result")
         display_image = image
         if preview:
@@ -124,22 +156,26 @@ def main():
                 result["gradcam_heatmap"] = overlay
             except (requests.RequestException, OSError, ValueError):
                 display_image = None
-                st.warning(
+                notice(
+                    "warning",
                     t(
                         "The example image could not load. Set PREVIEW_XRAY_PATH to "
                         "a local X-ray file for offline preview."
-                    )
+                    ),
                 )
-        render_images(display_image, result, image_focus, preview)
-        if preview and display_image is not None:
-            with compact_section("sample-credit"):
-                st.caption(
-                    t(
-                        "[Sample X-ray: Mikael Häggström · CC0]({source}). Overlay and scores are "
-                        "illustrative, not model results for this image.",
-                        source=SAMPLE_SOURCE,
-                    )
-                )
+        if display_image is not None:
+            with compact_section("image-panel"):
+                render_images(display_image, result, image_focus, preview)
+                if preview and display_image is not None:
+                    with compact_section("sample-credit"):
+                        st.markdown(
+                            t(
+                                "[Sample X-ray: Mikael Häggström · CC0]({source}). "
+                                "Overlay and scores are "
+                                "illustrative, not model results for this image.",
+                                source=SAMPLE_SOURCE,
+                            )
+                        )
 
     with right:
         with compact_section("review"):
@@ -147,13 +183,9 @@ def main():
 
     with compact_section("footer"):
         st.divider()
-        st.caption(
+        caption(
             t(
                 "Educational prototype. AI outputs are for reference and "
                 "must not be used for clinical diagnosis."
             )
         )
-
-
-if __name__ == "__main__":
-    main()

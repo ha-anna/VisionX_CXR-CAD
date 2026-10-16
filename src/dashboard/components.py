@@ -6,26 +6,22 @@ import streamlit as st
 from i18n import disease_name, t
 from image_utils import read_heatmap
 from PIL import Image
-from styles import compact_section
+from styles import caption, compact_section, notice
 
 
 def score_chart(scores, detections=()):
     rows = []
     for name, score in sorted(scores.items(), key=lambda item: item[1], reverse=True):
-        band = "red" if score >= 0.5 else "yellow" if score >= 0.3 else "green"
         label = html.escape(disease_name(name))
         rows.append(
             f'<div class="vx-score"><span>{label}{" ●" if name in detections else ""}</span>'
-            f'<div class="vx-track"><div class="vx-fill vx-{band}" '
+            f'<div class="vx-track"><div class="vx-fill" '
             f'style="width:{score * 100:.3f}%"></div></div>'
-            f'<span class="vx-value">{score:.0%}</span></div>'
+            f'<span class="vx-value">{score:.2f}</span></div>'
         )
     st.markdown(
-        '<div class="vx-axis"><span>0%</span><span>50%</span><span>100%</span></div>'
-        + "".join(rows)
-        + '<div class="vx-legend"><span><i class="vx-swatch vx-green"></i>&lt;30%</span>'
-        '<span><i class="vx-swatch vx-yellow"></i>30≥50%</span>'
-        '<span><i class="vx-swatch vx-red"></i>≥50%</span></div>',
+        '<div class="vx-axis-row"><span></span><div class="vx-axis"><span>0.00</span>'
+        "<span>0.50</span><span>1.00</span></div><span></span></div>" + "".join(rows),
         unsafe_allow_html=True,
     )
 
@@ -42,11 +38,12 @@ def render_images(image, result, image_focus=False, preview=False):
             if not preview and os.getenv("GRADCAM_IS_OVERLAY", "true").lower() != "true":
                 heatmap = Image.blend(image, heatmap.resize(image.size), alpha=0.4)
         except (ValueError, OSError, binascii.Error, Image.DecompressionBombError):
-            st.warning(
+            notice(
+                "warning",
                 t(
                     "The explanation image could not be displayed. "
                     "Prediction scores are still available."
-                )
+                ),
             )
 
     selection = "Compare"
@@ -87,7 +84,7 @@ def render_images(image, result, image_focus=False, preview=False):
 
     with compact_section("explanation"):
         if result and heatmap is None:
-            st.caption(t("An explanation image is not available for this result."))
+            caption(t("An explanation image is not available for this result."))
 
         if heatmap is not None:
             with st.expander(t("How to read the explanation")):
@@ -103,9 +100,10 @@ def render_images(image, result, image_focus=False, preview=False):
 
 
 def render_detections(result, preview=False):
-    with st.container(border=True):
-        st.subheader(t("Example findings") if preview else t("Detected findings"), anchor=False)
-        st.caption(t("Scores above their configured disease thresholds."))
+    with st.container(key="findings-summary", border=False):
+        st.subheader(t("Example findings") if preview else t("Findings summary"), anchor=False)
+        caption(t("Scores above their configured disease thresholds."))
+        st.space(1)
         diseases = result["detected_diseases"]
 
         if diseases:
@@ -121,7 +119,8 @@ def render_detections(result, preview=False):
                     "Model scores and the Grad-CAM overlay are shown below."
                 )
             )
-            st.caption(t("This does not establish that the image is clinically normal."))
+            caption(t("This does not establish that the image is clinically normal."))
+        st.space(1)
 
     with st.expander(t("Model details")):
         st.write(t("DenseNet-121 · 14 independent disease outputs"))
@@ -139,23 +138,26 @@ def render_detections(result, preview=False):
 def render_scores(result):
     st.subheader(t("All disease scores"), anchor=False)
     score_chart(result["predictions"], result["detected_diseases"])
-    st.caption(
+    caption(
         t(
-            "A dot marks a detected finding. Colors are score bands, not clinical severity. "
+            "Scores range from 0 to 1; they are not disease probabilities. "
+            "A dot marks a detected finding. "
             "Detection uses disease-specific thresholds from the API."
         )
     )
+    st.space(4)
 
 
 def render_results(result, preview=False, image_focus=False):
     st.subheader(t("Analysis results"), anchor=False)
 
     if result and preview:
-        st.caption(t("Illustrative preview · Not model predictions"))
+        caption(t("Illustrative preview · Not model predictions"))
     elif result:
-        st.caption(t("Analysis complete · Review findings and scores below."))
+        caption(t("Analysis complete · Review findings and scores below."))
     if not result:
-        st.caption(t("Your results will appear here after you select Analyze image."))
+        caption(t("Your results will appear here after you select Analyze image."))
+        st.space(4)
         return
     if image_focus:
         detections, scores = st.columns([1, 1.6], gap="large")
