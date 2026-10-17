@@ -63,7 +63,15 @@ def health():
 async def predict(file: UploadFile = File(...)):
     start = time.perf_counter()
 
+    predictor = getattr(app.state, "predictor", None)
+    if predictor is None:
+        raise HTTPException(
+            status_code=503,
+            detail="The model is currently unavailable.",
+        )
+
     data = await file.read(MAX_UPLOAD_BYTES + 1)
+
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="File too large.")
 
@@ -71,19 +79,30 @@ async def predict(file: UploadFile = File(...)):
         image = Image.open(io.BytesIO(data))
 
         if image.format not in ALLOWED_FORMATS:
-            raise HTTPException(status_code=415, detail="Only PNG and JPEG are supported.")
+            raise HTTPException(
+                status_code=415,
+                detail="Only PNG and JPEG are supported.",
+            )
 
         image.load()
+
     except (UnidentifiedImageError, OSError):
-        raise HTTPException(status_code=400, detail="File is not a valid image.")
+        raise HTTPException(
+            status_code=400,
+            detail="File is not a valid image.",
+        )
 
-    if image.format not in ALLOWED_FORMATS:
-        raise HTTPException(status_code=415, detail="Only PNG and JPEG are supported.")
+    try:
+        result = await run_in_threadpool(
+            predictor.analyze,
+            image,
+        )
+    except (RuntimeError, OSError):
+        raise HTTPException(
+            status_code=503,
+            detail="The model could not process the image.",
+        )
 
-    result = await run_in_threadpool(
-        app.state.predictor.analyze,
-        image,
-    )
     scores = result["scores"]
     top_label = result["top_label"]
 
