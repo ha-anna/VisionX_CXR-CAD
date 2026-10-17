@@ -29,6 +29,7 @@ class Top1(Detection):
 
 class PredictResponse(BaseModel):
     schema_version: str = "0.1"
+    model_version: str
     is_stub: bool
     scores: dict[str, float]
     detected_diseases: list[Detection]
