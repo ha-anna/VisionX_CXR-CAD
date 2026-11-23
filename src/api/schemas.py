@@ -34,7 +34,7 @@ class PredictResponse(BaseModel):
     scores: dict[str, float]
     detected_diseases: list[Detection]
     top1: Top1
-    heatmap_base64: str
+    heatmap_base64: str | None
     inference_time_ms: float
 
 

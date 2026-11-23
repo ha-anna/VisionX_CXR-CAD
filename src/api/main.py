@@ -3,6 +3,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from threading import Lock
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -15,7 +16,11 @@ from src.api.schemas import (
     PredictResponse,
     Top1,
 )
-from src.models.inference import VisionXPredictor
+from src.models.inference import (
+    VisionXPredictor,
+    analyze_ensemble,
+    load_ensemble_models,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 load_dotenv(PROJECT_ROOT / ".env")
@@ -31,17 +36,29 @@ async def lifespan(app: FastAPI):
 
     bundle_dir = bundle_dir.resolve()
 
-    for filename in ("model.pth", "config.json"):
-        if not (bundle_dir / filename).is_file():
-            raise FileNotFoundError(f"Missing {filename} in model bundle: {bundle_dir}")
-
     print(f"Loading model bundle: {bundle_dir}")
-    app.state.predictor = VisionXPredictor(bundle_dir, device="cpu")
+
+    if (bundle_dir / "inference_config.json").is_file():
+        app.state.predictor = None
+        app.state.ensemble = load_ensemble_models(bundle_dir, device="cpu")
+        app.state.ensemble_lock = Lock()
+    else:
+        for filename in ("model.pth", "config.json"):
+            if not (bundle_dir / filename).is_file():
+                raise FileNotFoundError(f"Missing {filename} in model bundle: {bundle_dir}")
+
+        app.state.predictor = VisionXPredictor(bundle_dir, device="cpu")
+        app.state.ensemble = None
+
+    app.state.model_version = bundle_dir.name
 
     try:
         yield
     finally:
         del app.state.predictor
+        del app.state.ensemble
+        del app.state.model_version
+        del app.state.ensemble_lock
 
 
 app = FastAPI(
@@ -64,7 +81,8 @@ async def predict(file: UploadFile = File(...)):
     start = time.perf_counter()
 
     predictor = getattr(app.state, "predictor", None)
-    if predictor is None:
+    ensemble = getattr(app.state, "ensemble", None)
+    if predictor is None and ensemble is None:
         raise HTTPException(
             status_code=503,
             detail="The model is currently unavailable.",
@@ -90,6 +108,36 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=400,
             detail="File is not a valid image.",
+        )
+
+    if ensemble is not None:
+        config, models_by_arch = ensemble
+
+        try:
+            scores, top_label, heatmap_base64 = await run_in_threadpool(
+                analyze_ensemble,
+                data,
+                config,
+                models_by_arch,
+                app.state.ensemble_lock,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400, detail="File could not be decoded for inference."
+            ) from exc
+        except (RuntimeError, OSError) as exc:
+            raise HTTPException(
+                status_code=503, detail="The model could not process the image."
+            ) from exc
+
+        return PredictResponse(
+            model_version=app.state.model_version,
+            is_stub=False,
+            scores=scores,
+            detected_diseases=[],
+            top1=Top1(name=top_label, score=scores[top_label], detected=False),
+            heatmap_base64=heatmap_base64,
+            inference_time_ms=(time.perf_counter() - start) * 1000,
         )
 
     try:

@@ -123,7 +123,8 @@ def render_detections(result, preview=False):
         st.space(1)
 
     with st.expander(t("Model details")):
-        st.write(t("DenseNet-121 · 14 independent disease outputs"))
+        st.write(t("DenseNet-121 + EfficientNet-B0 ensemble · 14 independent disease outputs"))
+        st.caption(t("Grad-CAM source: DenseNet-121, fold 0"))
 
         if preview:
             st.write(t("Illustrative scores; no model was called."))

@@ -114,13 +114,174 @@ def preprocess_tensor(image, preprocessing):
 
 
 def build_model(architecture, num_classes, pretrained=False):
-    """Architecture support is implemented once; saved config selects it."""
-    if architecture != "densenet121":
+    """Build a model with the classifier layout used in training."""
+    from torchvision.models import (
+        DenseNet121_Weights,
+        EfficientNet_B0_Weights,
+        efficientnet_b0,
+    )
+
+    if architecture == "densenet121":
+        weights = DenseNet121_Weights.IMAGENET1K_V1 if pretrained else None
+        model = densenet121(weights=weights)
+        model.classifier = torch.nn.Linear(
+            model.classifier.in_features, num_classes
+        )
+    elif architecture == "efficientnet_b0":
+        weights = EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None
+        model = efficientnet_b0(weights=weights)
+        model.classifier[1] = torch.nn.Linear(
+            model.classifier[1].in_features, num_classes
+        )
+    else:
         raise ValueError(f"Unsupported architecture: {architecture}")
-    from torchvision.models import DenseNet121_Weights
-    model = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1 if pretrained else None)
-    model.classifier = torch.nn.Linear(model.classifier.in_features, num_classes)
+
     return model
+
+def load_ensemble_models(bundle_dir, device="cpu"):
+    bundle = Path(bundle_dir)
+    config = json.loads(
+        (bundle / "inference_config.json").read_text(encoding="utf-8")
+    )
+    num_classes = len(config["class_names"])
+    models_by_arch = {arch: [] for arch in config["archs"]}
+
+    for filename in config["model_files"]:
+        # Split from the right because efficientnet_b0 contains an underscore.
+        architecture, _, _ = Path(filename).stem.rsplit("_", 2)
+        if architecture not in models_by_arch:
+            raise ValueError(f"Unexpected architecture in checkpoint: {filename}")
+
+        model = build_model(architecture, num_classes)
+        checkpoint = bundle / "models" / filename
+        state = torch.load(checkpoint, map_location="cpu", weights_only=True)
+        model.load_state_dict(state, strict=True)
+        models_by_arch[architecture].append(model.to(device).eval())
+
+    return config, models_by_arch
+
+
+def prepare_ensemble_image(image_bytes, config):
+    exported = config["preprocessing"]
+    clahe = exported["clahe"]
+    preprocessing = {
+        "resize_strategy": "direct_resize",
+        "grayscale": True,
+        "channels": "repeat_grayscale_3_times",
+        "resize": exported["resize"],
+        "interpolation": exported["interpolation"],
+        "clahe": True,
+        "clahe_settings": {
+            "clip_limit": clahe["clipLimit"],
+            "tile_grid_size": clahe["tileGridSize"],
+            "apply_before_resize": clahe["applied_before_resize"],
+        },
+        "mean": exported["normalize_mean"],
+        "std": exported["normalize_std"],
+    }
+
+    if not image_bytes:
+        raise ValueError("Image is empty.")
+
+    encoded = np.frombuffer(image_bytes, dtype=np.uint8)
+    gray = cv2.imdecode(encoded, cv2.IMREAD_GRAYSCALE)
+    if gray is None:
+        raise ValueError("Could not decode image.")
+
+    image = Image.fromarray(gray)
+    return image, preprocess_tensor(image, preprocessing).unsqueeze(0)
+
+
+@torch.inference_mode()
+def predict_ensemble_raw(image_bytes, config, models_by_arch):
+    _, batch = prepare_ensemble_image(image_bytes, config)
+    first_model = models_by_arch[config["archs"][0]][0]
+    batch = batch.to(next(first_model.parameters()).device)
+    flipped = batch.flip(-1) if config["use_tta"] else None
+
+    architecture_scores = []
+    for architecture in config["archs"]:
+        fold_scores = []
+        for model in models_by_arch[architecture]:
+            scores = torch.sigmoid(model(batch).float())
+            if flipped is not None:
+                flipped_scores = torch.sigmoid(model(flipped).float())
+                scores = (scores + flipped_scores) / 2
+            fold_scores.append(scores)
+        architecture_scores.append(torch.stack(fold_scores).mean(dim=0))
+
+    return torch.stack(architecture_scores).mean(dim=0)[0].cpu()
+
+def calibrate_ensemble_scores(raw_scores, config):
+    temperatures = raw_scores.new_tensor([
+        config["temperatures"][label]
+        for label in config["class_names"]
+    ])
+    logits = torch.logit(raw_scores.clamp(1e-6, 1 - 1e-6))
+    return torch.sigmoid(logits / temperatures)
+
+def grad_cam_overlay(model, target_layer, batch, image, class_index, label):
+    with torch.inference_mode(False), torch.enable_grad():
+        captured = {}
+
+        def capture(module, inputs, output):
+            captured["activation"] = output
+
+        handle = target_layer.register_forward_hook(capture)
+        try:
+            x = batch.detach().clone().requires_grad_(True)
+            logits = model(x)
+            activation = captured["activation"]
+            gradient = torch.autograd.grad(logits[0, class_index], activation)[0]
+            weights = gradient.mean(dim=(2, 3), keepdim=True)
+            raw = torch.relu((weights * activation).sum(dim=1))[0]
+            raw = raw.detach().cpu().numpy()
+        finally:
+            handle.remove()
+
+        if not np.isfinite(raw).all():
+            raise RuntimeError("Non-finite Grad-CAM values.")
+        
+        empty = float(raw.max()) <= 1e-12
+        cam = np.zeros_like(raw) if empty else raw / raw.max()
+        cam = cv2.resize(cam, image.size, interpolation=cv2.INTER_LINEAR)
+        cam = np.clip(cam, 0, 1)
+        base = np.asarray(image.convert("L").convert("RGB"), dtype=np.float32) / 255.0
+        color = cv2.applyColorMap(np.uint8(cam * 255), cv2.COLORMAP_JET)
+        color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        alpha = 0.45 * cam[..., None]
+        overlay = Image.fromarray(np.uint8(np.clip(base * (1 - alpha) + color * alpha, 0, 1) * 255))
+        return {
+            "label": label,
+            "heatmap": cam,
+            "overlay": overlay,
+            "empty": empty,
+            "target_layer": "features.denseblock4.denselayer16.conv2",
+        }
+
+def analyze_ensemble(image_bytes, config, models_by_arch, lock):
+    with lock:
+        raw_scores = predict_ensemble_raw(image_bytes, config, models_by_arch)
+        calibrated = calibrate_ensemble_scores(raw_scores, config)
+        labels = config["class_names"]
+        scores = dict(zip(labels, calibrated.tolist()))
+        top_label = max(scores, key=scores.__getitem__)
+
+        model = models_by_arch["densenet121"][0]
+        image, batch = prepare_ensemble_image(image_bytes, config)
+        explanation = grad_cam_overlay(
+            model=model,
+            target_layer=model.features.denseblock4.denselayer16.conv2,
+            batch=batch.to(next(model.parameters()).device),
+            image=image,
+            class_index=labels.index(top_label),
+            label=top_label,
+        )
+
+    buffer = io.BytesIO()
+    explanation["overlay"].save(buffer, format="PNG")
+    heatmap_base64 = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return scores, top_label, heatmap_base64
 
 
 class VisionXPredictor:
@@ -212,45 +373,18 @@ class VisionXPredictor:
         return dict(zip(self.labels, scores))
 
     def grad_cam(self, image, label):
-        """Generates a colored overlay showing regions that contributed to
-        a selected label's score."""
         if label not in self.labels:
             raise ValueError(f"Unknown label: {label}")
 
-        with self._lock, torch.inference_mode(False), torch.enable_grad():
-            captured = {}
-
-            def capture(module, inputs, output):
-                captured["activation"] = output
-
-            handle = self.target_layer.register_forward_hook(capture)
-            try:
-                x = self.preprocess(image).requires_grad_(True)
-                logits = self.model(x)
-                activation = captured["activation"]
-                gradient = torch.autograd.grad(logits[0, self.labels.index(label)], activation)[0]
-                weights = gradient.mean(dim=(2, 3), keepdim=True)
-                raw = torch.relu((weights * activation).sum(dim=1))[0].detach().cpu().numpy()
-            finally:
-                handle.remove()
-        if not np.isfinite(raw).all():
-            raise RuntimeError("Non-finite Grad-CAM values.")
-        empty = float(raw.max()) <= 1e-12
-        cam = np.zeros_like(raw) if empty else raw / raw.max()
-        cam = cv2.resize(cam, image.size, interpolation=cv2.INTER_LINEAR)
-        cam = np.clip(cam, 0, 1)
-        base = np.asarray(image.convert("L").convert("RGB"), dtype=np.float32) / 255.0
-        color = cv2.applyColorMap(np.uint8(cam * 255), cv2.COLORMAP_JET)
-        color = cv2.cvtColor(color, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-        alpha = 0.45 * cam[..., None]
-        overlay = Image.fromarray(np.uint8(np.clip(base * (1 - alpha) + color * alpha, 0, 1) * 255))
-        return {
-            "label": label,
-            "heatmap": cam,
-            "overlay": overlay,
-            "empty": empty,
-            "target_layer": "features.denseblock4.denselayer16.conv2",
-        }
+        with self._lock:
+            return grad_cam_overlay(
+                model=self.model,
+                target_layer=self.target_layer,
+                batch=self.preprocess(image),
+                image=image,
+                class_index=self.labels.index(label),
+                label=label,
+            )
 
     def analyze(self, image, label=None):
         """Combines predictions and Grad-CAM, then packages the results for the API."""
