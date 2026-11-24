@@ -263,9 +263,12 @@ def ensemble_grad_cam(image_bytes, config, models_by_arch, lock, label):
     labels = config["class_names"]
     class_index = labels.index(label)
 
+    print("[gradcam] waiting for ensemble lock", flush=True)
     with lock:
+        print("[gradcam] lock acquired", flush=True)
         model = models_by_arch["densenet121"][0]
         image, batch = prepare_ensemble_image(image_bytes, config)
+        print("[gradcam] computing overlay", flush=True)
 
         return grad_cam_overlay(
             model=model,

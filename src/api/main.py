@@ -96,7 +96,9 @@ async def predict(file: UploadFile = File(...)):
             detail="The model is currently unavailable.",
         )
 
+    print("[gradcam] decoding upload", flush=True)
     data, image = await read_upload(file)
+    print("[gradcam] upload decoded", flush=True)
     if ensemble is not None:
         config, models_by_arch = ensemble
 
@@ -187,6 +189,7 @@ async def gradcam(disease: str, file: UploadFile = File(...)):
         else:
             explanation = await run_in_threadpool(predictor.grad_cam, image, disease)
 
+        print("[gradcam] overlay returned", flush=True)
         if explanation["empty"]:
             return {"disease": disease, "heatmap_base64": None}
 
