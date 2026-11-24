@@ -6,7 +6,7 @@ import streamlit as st
 from i18n import disease_name, t
 from image_utils import read_heatmap
 from PIL import Image
-from styles import caption, compact_section, notice
+from styles import caption, compact_section
 
 
 def score_chart(scores, detections=()):
