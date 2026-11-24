@@ -62,6 +62,34 @@ KO = {
     "{name} · {width} × {height} pixels": "{name} · {width} × {height} 픽셀",
     "[Sample X-ray: Mikael Häggström · CC0]({source}). Overlay and scores are illustrative, not model results for this image.": "[예시 X선 영상: Mikael Häggström · CC0]({source}). 오버레이와 점수는 예시이며 이 영상에 대한 모델 결과가 아닙니다.",
     "VisionX GitHub repository": "VisionX GitHub 저장소",
+    (
+    "Highlighted areas contributed to the DenseNet-121 score for the "
+    "displayed disease. The overlay cannot confirm a diagnosis or "
+    "precisely outline a lesion."
+    ): (
+    "강조된 영역은 표시된 질환의 DenseNet-121 점수에 영향을 준 부분입니다. "
+    "이 오버레이만으로 질환을 진단하거나 병변의 정확한 경계를 확인할 수는 없습니다."
+    ),
+    "Disease to show in Grad-CAM": "Grad-CAM으로 확인할 질환",
+    "Generating Grad-CAM…": "Grad-CAM 생성 중…",
+    "Grad-CAM is unavailable for {disease}.": "{disease}의 Grad-CAM 히트맵을 표시할 수 없습니다.",
+    (
+    "Warmer colors (yellow and red) show stronger positive contributions "
+    "to the selected disease's score. Cooler colors (blue) show weaker "
+    "contributions. The color scale resets for each heatmap."
+    ): (
+        "노란색과 빨간색은 선택한 질환의 점수를 높이는 데 더 크게 기여한 영역을, "
+        "파란색은 기여도가 더 낮은 영역을 나타냅니다. 색상 척도는 히트맵마다 별도로 적용됩니다."
+    ),
+    "Weaker contribution": "기여도 낮음",
+    "Stronger contribution": "기여도 높음",
+    (
+        "Colors show relative contributions to the DenseNet-121 score within "
+        "this heatmap. The overlay cannot confirm a diagnosis or outline a lesion."
+    ): (
+        "색상은 이 히트맵 내에서 DenseNet-121 점수에 대한 상대적 기여도를 나타냅니다. "
+        "이 오버레이로 진단을 확정하거나 병변의 경계를 판단할 수는 없습니다."
+    ),
 }
 
 DISEASES_KO = {

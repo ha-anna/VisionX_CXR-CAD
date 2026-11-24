@@ -2,7 +2,7 @@ import hashlib
 
 import requests
 import streamlit as st
-from api_client import prediction_request
+from api_client import gradcam_request, prediction_request
 from components import render_images, render_results
 from i18n import t
 from image_utils import decode_image
@@ -136,6 +136,12 @@ def main():
                             uploaded.name,
                             "image/png" if raw.startswith(b"\x89PNG") else "image/jpeg",
                         )
+                        analysis = st.session_state["result"]
+                        top_disease = analysis["top1_disease"]
+                        st.session_state["gradcam_disease"] = top_disease
+                        analysis["heatmaps_by_disease"] = {
+                            top_disease: analysis["gradcam_heatmap"],
+                        }
                 except requests.Timeout:
                     notice("error", t("Analysis took too long. Please try again."))
                 except requests.RequestException:
@@ -163,6 +169,28 @@ def main():
                         "a local X-ray file for offline preview."
                     ),
                 )
+
+        if result and not preview and display_image is not None:
+            disease = st.session_state.get("gradcam_disease", result["top1_disease"])
+            heatmaps = result["heatmaps_by_disease"]
+
+            if disease not in heatmaps:
+                try:
+                    with st.spinner(t("Generating Grad-CAM…")):
+                        heatmaps[disease] = gradcam_request(
+                            raw,
+                            uploaded.name,
+                            "image/png" if raw.startswith(b"\x89PNG") else "image/jpeg",
+                            disease,
+                        )
+                except (requests.RequestException, ValueError):
+                    heatmaps[disease] = None
+
+            result = {
+                **result,
+                "gradcam_disease": disease,
+                "gradcam_heatmap": heatmaps[disease],
+            }
         if display_image is not None:
             with compact_section("image-panel"):
                 render_images(display_image, result, image_focus, preview)

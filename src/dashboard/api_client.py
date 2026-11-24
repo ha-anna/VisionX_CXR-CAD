@@ -52,3 +52,26 @@ def prediction_request(raw, name, mime):
     }
 
     return validate_response(dashboard_data)
+
+
+def gradcam_request(raw, name, mime, disease):
+    response = requests.post(
+        f"{API_URL}/gradcam",
+        params={"disease": disease},
+        files={"file": (name, raw, mime)},
+        timeout=(5, 60),
+    )
+    response.raise_for_status()
+
+    data = response.json()
+    if not isinstance(data, dict) or data.get("disease") != disease:
+        raise ValueError("The API returned an unexpected Grad-CAM disease.")
+
+    if "heatmap_base64" not in data:
+        raise ValueError("The API response is missing the Grad-CAM image field.")
+
+    heatmap = data["heatmap_base64"]
+    if heatmap is not None and (not isinstance(heatmap, str) or not heatmap):
+        raise ValueError("The API returned an invalid Grad-CAM image.")
+
+    return heatmap

@@ -157,6 +157,39 @@ h3 {padding-bottom: 20.4rem;}
 .vx-value {text-align:right;font-variant-numeric:tabular-nums;}
 .vx-axis {display:flex;justify-content:space-between;font-size:11px;color:var(--vx-muted);margin-bottom:4px;}
 .vx-chips {display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;}
+.st-key-vx-compact-image-panel {
+    padding-bottom: 1.5rem;
+}
+.vx-cam-legend {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+        "scale scale"
+        "weaker stronger";
+    gap: .3rem .75rem;
+    width: 100%;
+    margin-bottom: .6rem;
+    color: var(--vx-muted);
+    font-size: .75rem;
+}
+
+.vx-cam-legend > span:first-child {
+    grid-area: weaker;
+    white-space: normal;
+}
+
+.vx-cam-legend > span:last-child {
+    grid-area: stronger;
+    text-align: right;
+    white-space: normal;
+}
+
+.vx-cam-legend > .vx-cam-scale {
+    grid-area: scale;
+    height: .35rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #1554c0, #29ccc7, #f4d44d, #d83531);
+}
 .vx-chip {background:var(--vx-chip);color:var(--vx-chip-text);border:1px solid var(--vx-line);padding:4px 8px;border-radius:5px;font-size:13px;}
 @media(max-width:640px) {
     [data-testid="stMainBlockContainer"], .block-container {padding:1rem .75rem 2rem;}
