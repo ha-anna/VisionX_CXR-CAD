@@ -18,17 +18,21 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
-ARG HF_REVISION=main
+ARG HF_REPO_ID
+ARG HF_REVISION
+ARG MODEL_ARCHIVE_NAME
+ARG MODEL_ARCHIVE_SHA256
+ARG MODEL_BUNDLE_DIR
 
 RUN --mount=type=secret,id=hf_token,required=true \
     curl --fail --silent --show-error --location --retry 3 \
       --header "Authorization: Bearer $(cat /run/secrets/hf_token)" \
       --output /tmp/visionx-ensemble.tar.gz \
-      "https://huggingface.co/visionx-cxr-cad/visionx-ensemble/resolve/${HF_REVISION}/visionx-ensemble-2026-11-23.tar.gz" \
-    && echo "50704ce4336c111abfc8368a1bdb1ef09605518dd637a5b15a1581e01ad4b6cf  /tmp/visionx-ensemble.tar.gz" | sha256sum -c - \
+      "https://huggingface.co/${HF_REPO_ID}/resolve/${HF_REVISION}/${MODEL_ARCHIVE_NAME}" \
+    && printf '%s  %s\n' "$MODEL_ARCHIVE_SHA256" /tmp/visionx-ensemble.tar.gz | sha256sum -c - \
     && mkdir -p /workspace/models \
     && tar -xzf /tmp/visionx-ensemble.tar.gz -C /workspace/models \
-    && test -f /workspace/models/2026_11_23_ensemble/inference_config.json \
+    && test -f "$MODEL_BUNDLE_DIR/inference_config.json" \
     && rm /tmp/visionx-ensemble.tar.gz
 
 CMD ["python", "--version"]
