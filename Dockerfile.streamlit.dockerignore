@@ -1,0 +1,15 @@
+.git/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+.DS_Store
+data/
+notebooks/
+/hf_token
+
+# Model artifacts are only needed by the FastAPI image.
+/models/
+**/visionx-ensemble-*.tar.gz
+**/hf_token
