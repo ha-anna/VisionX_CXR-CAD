@@ -79,3 +79,9 @@ We are a team of Computer Science and Engineering students at Sogang University 
 3. Clone the repository and open the folder in VS Code.
 4. Press `F1` and select **Dev Containers: Reopen in Container**.
 5. Wait for the first build to finish. Python and all dependencies are then available in the container.
+
+
+## Deployment
+
+See [Deploy VisionX on Render](docs/deployment.md) for ensemble packaging,
+Hugging Face access, and Render setup.
