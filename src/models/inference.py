@@ -259,6 +259,23 @@ def grad_cam_overlay(model, target_layer, batch, image, class_index, label):
             "target_layer": "features.denseblock4.denselayer16.conv2",
         }
 
+def ensemble_grad_cam(image_bytes, config, models_by_arch, lock, label):
+    labels = config["class_names"]
+    class_index = labels.index(label)
+
+    with lock:
+        model = models_by_arch["densenet121"][0]
+        image, batch = prepare_ensemble_image(image_bytes, config)
+
+        return grad_cam_overlay(
+            model=model,
+            target_layer=model.features.denseblock4.denselayer16.conv2,
+            batch=batch.to(next(model.parameters()).device),
+            image=image,
+            class_index=class_index,
+            label=label,
+        )
+
 def analyze_ensemble(image_bytes, config, models_by_arch, lock):
     with lock:
         raw_scores = predict_ensemble_raw(image_bytes, config, models_by_arch)
@@ -267,16 +284,9 @@ def analyze_ensemble(image_bytes, config, models_by_arch, lock):
         scores = dict(zip(labels, calibrated.tolist()))
         top_label = max(scores, key=scores.__getitem__)
 
-        model = models_by_arch["densenet121"][0]
-        image, batch = prepare_ensemble_image(image_bytes, config)
-        explanation = grad_cam_overlay(
-            model=model,
-            target_layer=model.features.denseblock4.denselayer16.conv2,
-            batch=batch.to(next(model.parameters()).device),
-            image=image,
-            class_index=labels.index(top_label),
-            label=top_label,
-        )
+    explanation = ensemble_grad_cam(
+        image_bytes, config, models_by_arch, lock, top_label
+    )
 
     buffer = io.BytesIO()
     explanation["overlay"].save(buffer, format="PNG")

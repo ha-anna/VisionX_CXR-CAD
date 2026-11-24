@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VisionX CXR-CAD API</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: system-ui, sans-serif;
+            background: #0d1320;
+            color: #f4f7ff;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        .shell {
+            width: min(48rem, calc(100% - 2rem));
+            margin-inline: auto;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-block: 1.25rem;
+            font-size: 0.875rem;
+        }
+
+        .wordmark {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .hero {
+            margin-top: clamp(1.5rem, 6vw, 4rem);
+            padding: clamp(1.5rem, 5vw, 3.5rem);
+            border: 1px solid #2d3e55;
+            border-radius: 1rem;
+            background: linear-gradient(145deg, #1a2b41, #121c2c 72%);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(1.875rem, 5vw, 2.75rem);
+            letter-spacing: -0.04em;
+            line-height: 1.1;
+        }
+
+        p {
+            margin: 0.875rem 0 1.75rem;
+            color: #b7c5d8;
+            line-height: 1.6;
+        }
+
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.875rem 1.25rem;
+        }
+
+        a {
+            color: #c9d8eb;
+            text-underline-offset: 0.2em;
+        }
+
+        a:focus-visible {
+            outline: 2px solid #9ddbd7;
+            outline-offset: 4px;
+        }
+
+        .primary {
+            display: inline-flex;
+            gap: 0.5rem;
+            padding: 0.65rem 0.9rem;
+            border-radius: 0.5rem;
+            background: #a7e2dc;
+            color: #102423;
+            font-weight: 650;
+            text-decoration: none;
+        }
+
+        .status-card {
+            margin-top: 1rem;
+            padding: clamp(1rem, 3vw, 1.5rem);
+            border: 1px solid #2d3e55;
+            border-radius: 1rem;
+            background: #121c2c;
+        }
+
+        .status-header,
+        .status-footer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-header h2 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .status-label,
+        .status-footer {
+            color: #b7c5d8;
+            font-size: 0.8125rem;
+        }
+
+        .status-label[data-state="up"] {
+            color: #80e3bf;
+        }
+
+        .status-label[data-state="unknown"] {
+            color: #f3c978;
+        }
+
+        .uptime-strip {
+            display: grid;
+            grid-template-columns: repeat(30, minmax(0, 1fr));
+            gap: clamp(1px, 0.3vw, 3px);
+            margin: 1rem 0 0.625rem;
+        }
+
+        .uptime-strip span {
+            height: 1.125rem;
+            border-radius: 2px;
+            background: #34445a;
+        }
+
+        .uptime-strip span[data-state="up"] {
+            background: #4dc7a0;
+        }
+
+        .uptime-strip span[data-state="partial"] {
+            background: #f3c978;
+        }
+
+        .uptime-strip span[data-state="down"] {
+            background: #f07878;
+        }
+
+        .status-label[data-state="down"] {
+            color: #f07878;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <span class="wordmark">VisionX</span>
+            <a href="/health">Health check</a>
+        </header>
+
+        <section class="hero" aria-labelledby="page-title">
+            <h1 id="page-title">Chest X-ray API</h1>
+            <p>Get prediction scores for 14 findings and view disease-specific Grad-CAM overlays.</p>
+            <nav aria-label="API resources">
+                <a class="primary" href="/docs">Open API docs <span aria-hidden="true">↗</span></a>
+                <a href="https://github.com/ha-anna/VisionX_CXR-CAD">View on GitHub</a>
+            </nav>
+        </section>
+
+        <section class="status-card" aria-labelledby="status-title">
+            <div class="status-header">
+                <h2 id="status-title">API availability</h2>
+                <span class="status-label" id="api-status" role="status">
+                    Checking status…
+                </span>
+            </div>
+            <div class="uptime-strip" id="uptime-strip"></div>
+            <div class="status-footer">
+                <span>Last 30 days · UTC</span>
+                <span id="uptime-summary">Loading uptime…</span>
+                <span>Today</span>
+            </div>
+        </section>
+    </main>
+
+    <script type="module">
+        const strip = document.querySelector("#uptime-strip");
+        const status = document.querySelector("#api-status");
+        const summary = document.querySelector("#uptime-summary");
+
+        const labels = {
+            up: "● Operational",
+            down: "● Down",
+            warning: "● Investigating",
+            paused: "Monitoring paused",
+            pending: "Awaiting first check",
+            unknown: "Status unavailable",
+        };
+
+        const bars = Array.from({ length: 30 }, () => document.createElement("span"));
+        strip.replaceChildren(...bars);
+
+        try {
+            const response = await fetch("/uptime", {
+                cache: "no-store",
+                signal: AbortSignal.timeout(10000),
+            });
+            if (!response.ok) throw new Error("Uptime data unavailable");
+
+            const data = await response.json();
+            status.textContent = labels[data.status] ?? labels.unknown;
+            status.dataset.state = data.status in labels ? data.status : "unknown";
+            const latest = data.days.filter(({ uptime }) => uptime !== null).at(-1);
+            summary.textContent = latest
+                ? `${latest.uptime.toFixed(2)}% uptime on ${latest.date}`
+                : "No uptime history yet";
+
+            data.days.forEach(({ date, uptime }, index) => {
+                const bar = bars[index];
+                if (uptime === 100) bar.dataset.state = "up";
+                else if (uptime === 0) bar.dataset.state = "down";
+                else if (uptime !== null) bar.dataset.state = "partial";
+
+                const description = uptime === null
+                    ? `${date} · No data`
+                    : `${date} · ${uptime.toFixed(2)}% uptime`;
+                bar.title = description;
+                bar.setAttribute("role", "img");
+                bar.setAttribute("aria-label", description);
+            });
+        } catch {
+            status.textContent = "Status unavailable";
+            status.dataset.state = "unknown";
+            summary.textContent = "Uptime history unavailable";
+        }
+    </script>
+</body>
+
+</html>
