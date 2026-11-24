@@ -1,3 +1,4 @@
+import base64
 import io
 import os
 import time
@@ -7,18 +8,20 @@ from threading import Lock
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from PIL import Image, UnidentifiedImageError
+from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
-from src.api.config import ALLOWED_FORMATS, MAX_UPLOAD_BYTES
 from src.api.schemas import (
     HealthResponse,
     PredictResponse,
     Top1,
 )
+from src.api.uploads import read_upload
+from src.api.uptime import get_uptime
 from src.models.inference import (
     VisionXPredictor,
     analyze_ensemble,
+    ensemble_grad_cam,
     load_ensemble_models,
 )
 
@@ -41,7 +44,6 @@ async def lifespan(app: FastAPI):
     if (bundle_dir / "inference_config.json").is_file():
         app.state.predictor = None
         app.state.ensemble = load_ensemble_models(bundle_dir, device="cpu")
-        app.state.ensemble_lock = Lock()
     else:
         for filename in ("model.pth", "config.json"):
             if not (bundle_dir / filename).is_file():
@@ -51,6 +53,7 @@ async def lifespan(app: FastAPI):
         app.state.ensemble = None
 
     app.state.model_version = bundle_dir.name
+    app.state.ensemble_lock = Lock()
 
     try:
         yield
@@ -65,6 +68,11 @@ app = FastAPI(
     title="VisionX CXR-CAD API",
     lifespan=lifespan,
 )
+
+
+@app.get("/", response_class=FileResponse, include_in_schema=False)
+def root():
+    return FileResponse(Path(__file__).with_name("index.html"), media_type="text/html")
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -88,28 +96,7 @@ async def predict(file: UploadFile = File(...)):
             detail="The model is currently unavailable.",
         )
 
-    data = await file.read(MAX_UPLOAD_BYTES + 1)
-
-    if len(data) > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="File too large.")
-
-    try:
-        image = Image.open(io.BytesIO(data))
-
-        if image.format not in ALLOWED_FORMATS:
-            raise HTTPException(
-                status_code=415,
-                detail="Only PNG and JPEG are supported.",
-            )
-
-        image.load()
-
-    except (UnidentifiedImageError, OSError):
-        raise HTTPException(
-            status_code=400,
-            detail="File is not a valid image.",
-        )
-
+    data, image = await read_upload(file)
     if ensemble is not None:
         config, models_by_arch = ensemble
 
@@ -167,3 +154,59 @@ async def predict(file: UploadFile = File(...)):
         heatmap_base64=result["gradcam_overlay_png_base64"],
         inference_time_ms=(time.perf_counter() - start) * 1000,
     )
+
+
+@app.post("/gradcam")
+async def gradcam(disease: str, file: UploadFile = File(...)):
+    predictor = getattr(app.state, "predictor", None)
+    ensemble = getattr(app.state, "ensemble", None)
+
+    if ensemble is not None:
+        config, models_by_arch = ensemble
+        labels = config["class_names"]
+    elif predictor is not None:
+        labels = predictor.labels
+    else:
+        raise HTTPException(status_code=503, detail="The model is currently unavailable.")
+
+    if disease not in labels:
+        raise HTTPException(status_code=422, detail="Unknown disease label.")
+
+    data, image = await read_upload(file)
+
+    try:
+        if ensemble is not None:
+            explanation = await run_in_threadpool(
+                ensemble_grad_cam,
+                data,
+                config,
+                models_by_arch,
+                app.state.ensemble_lock,
+                disease,
+            )
+        else:
+            explanation = await run_in_threadpool(predictor.grad_cam, image, disease)
+
+        if explanation["empty"]:
+            return {"disease": disease, "heatmap_base64": None}
+
+        buffer = io.BytesIO()
+        explanation["overlay"].save(buffer, format="PNG")
+    except (RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=503, detail="Grad-CAM generation failed.") from exc
+
+    return {
+        "disease": disease,
+        "heatmap_base64": base64.b64encode(buffer.getvalue()).decode("ascii"),
+    }
+
+
+@app.get("/uptime")
+def uptime():
+    try:
+        return get_uptime()
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Uptime history is temporarily unavailable.",
+        ) from exc

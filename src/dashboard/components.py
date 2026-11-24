@@ -6,7 +6,7 @@ import streamlit as st
 from i18n import disease_name, t
 from image_utils import read_heatmap
 from PIL import Image
-from styles import caption, compact_section, notice
+from styles import caption, compact_section
 
 
 def score_chart(scores, detections=()):
@@ -30,24 +30,21 @@ def render_images(image, result, image_focus=False, preview=False):
     if image is None:
         return
 
-    heatmap = None
+    disease = None
+    if result and not preview:
+        selected_label = result.get("gradcam_disease") or result["top1_disease"]
+        disease = disease_name(selected_label)
 
+    heatmap = None
     if result and result.get("gradcam_heatmap"):
         try:
             heatmap = read_heatmap(result["gradcam_heatmap"])
             if not preview and os.getenv("GRADCAM_IS_OVERLAY", "true").lower() != "true":
                 heatmap = Image.blend(image, heatmap.resize(image.size), alpha=0.4)
         except (ValueError, OSError, binascii.Error, Image.DecompressionBombError):
-            notice(
-                "warning",
-                t(
-                    "The explanation image could not be displayed. "
-                    "Prediction scores are still available."
-                ),
-            )
+            heatmap = None
 
     selection = "Compare"
-
     with compact_section("viewer-controls"):
         st.subheader(t("Image viewer"), anchor=False)
         if image_focus and heatmap is not None:
@@ -59,44 +56,53 @@ def render_images(image, result, image_focus=False, preview=False):
                 key="image_display",
             )
 
-    if heatmap is not None and selection == "Compare":
+    overlay_caption = (
+        t("Illustrative overlay · Not model-generated") if preview else f"Grad-CAM · {disease}"
+    )
+
+    if result and selection == "Compare":
         original_col, explanation_col = st.columns(2)
+
         with original_col:
             st.image(image, caption=t("Original image"), width="stretch")
+
         with explanation_col:
-            st.image(
-                heatmap,
-                caption=(
-                    t("Illustrative overlay · Not model-generated")
-                    if preview
-                    else f"Grad-CAM · {disease_name(result['top1_disease'])}"
-                ),
-                width="stretch",
-            )
-    elif selection == "Explanation" and heatmap is not None:
-        st.image(
-            heatmap,
-            caption=t("Illustrative overlay") if preview else t("Grad-CAM explanation"),
-            width="stretch",
-        )
+            if heatmap is not None:
+                st.image(heatmap, caption=overlay_caption, width="stretch")
+            elif preview:
+                st.info(t("An explanation image is not available for this result."))
+            else:
+                st.info(t("Grad-CAM is unavailable for {disease}.", disease=disease))
+
+    elif heatmap is not None and selection == "Explanation":
+        st.image(heatmap, caption=overlay_caption, width="stretch")
+
     else:
         st.image(image, caption=t("Original image"), width="stretch")
 
     with compact_section("explanation"):
-        if result and heatmap is None:
-            caption(t("An explanation image is not available for this result."))
-
-        if heatmap is not None:
-            with st.expander(t("How to read the explanation")):
-                if preview:
-                    st.write(t("This colored overlay illustrates the layout. It is not Grad-CAM."))
-                else:
-                    st.write(
-                        t(
-                            "Grad-CAM highlights regions influencing the selected disease score. "
-                            "It does not verify disease location."
-                        )
+        if heatmap is not None and selection != "Original":
+            if preview:
+                caption(t("This colored overlay illustrates the layout. It is not Grad-CAM."))
+            else:
+                st.markdown(
+                    f"""
+                    <div class="vx-cam-legend">
+                        <span>{t("Weaker contribution")}</span>
+                        <span class="vx-cam-scale" aria-hidden="true"></span>
+                        <span>{t("Stronger contribution")}</span>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+                caption(
+                    t(
+                        "Highlighted areas contributed to the DenseNet-121 score for the "
+                        "displayed disease. The overlay cannot confirm a diagnosis or "
+                        "precisely outline a lesion."
                     )
+                )
+                st.space(1)
 
 
 def render_detections(result, preview=False):
@@ -120,7 +126,6 @@ def render_detections(result, preview=False):
                 )
             )
             caption(t("This does not establish that the image is clinically normal."))
-        st.space(1)
 
     with st.expander(t("Model details")):
         st.write(t("DenseNet-121 + EfficientNet-B0 ensemble · 14 independent disease outputs"))
@@ -136,8 +141,16 @@ def render_detections(result, preview=False):
             )
 
 
-def render_scores(result):
+def render_scores(result, preview=False):
     st.subheader(t("All disease scores"), anchor=False)
+    if not preview:
+        scores = result["predictions"]
+        st.selectbox(
+            t("Disease to show in Grad-CAM"),
+            options=sorted(scores, key=scores.get, reverse=True),
+            format_func=disease_name,
+            key="gradcam_disease",
+        )
     score_chart(result["predictions"], result["detected_diseases"])
     caption(
         t(
@@ -165,7 +178,7 @@ def render_results(result, preview=False, image_focus=False):
         with detections:
             render_detections(result, preview)
         with scores:
-            render_scores(result)
+            render_scores(result, preview=preview)
     else:
         render_detections(result, preview)
-        render_scores(result)
+        render_scores(result, preview=preview)
