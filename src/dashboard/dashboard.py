@@ -5,7 +5,7 @@ import streamlit as st
 from api_client import gradcam_request, prediction_request
 from components import render_images, render_results
 from i18n import t
-from image_utils import decode_image
+from image_utils import decode_image, upload_mime
 from PIL import Image, UnidentifiedImageError
 from preview import SAMPLE_SOURCE, preview_images, preview_response
 from settings import MAX_BYTES
@@ -87,7 +87,7 @@ def main():
             st.subheader(t("Upload image"), anchor=False)
             uploaded = st.file_uploader(
                 "Upload a chest X-ray / 흉부 X선 영상 업로드",
-                type=["png", "jpg", "jpeg"],
+                type=["png", "jpg", "jpeg", "dcm"],
                 key="xray_upload",
                 label_visibility="collapsed",
                 max_upload_size=10,
@@ -106,7 +106,7 @@ def main():
                 try:
                     if len(raw) > MAX_BYTES:
                         raise ValueError(t("Please choose an image smaller than 10 MB."))
-                    image = decode_image(raw)
+                    image = decode_image(raw, uploaded.name)
                     caption(
                         t(
                             "{name} · {width} × {height} pixels",
@@ -119,7 +119,10 @@ def main():
                 except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError):
                     notice(
                         "error",
-                        t("Unable to read this image. Use a valid PNG/JPG smaller than 10 MB."),
+                        t(
+                            "Unable to read this image. "
+                            "Use a valid PNG, JPG or DICOM file smaller than 10 MB."
+                        ),
                     )
                     st.space(1)
             if st.button(
@@ -134,7 +137,7 @@ def main():
                         st.session_state["result"] = prediction_request(
                             raw,
                             uploaded.name,
-                            "image/png" if raw.startswith(b"\x89PNG") else "image/jpeg",
+                            upload_mime(raw, uploaded.name),
                         )
                         analysis = st.session_state["result"]
                         top_disease = analysis["top1_disease"]
@@ -180,7 +183,7 @@ def main():
                         heatmaps[disease] = gradcam_request(
                             raw,
                             uploaded.name,
-                            "image/png" if raw.startswith(b"\x89PNG") else "image/jpeg",
+                            upload_mime(raw, uploaded.name),
                             disease,
                         )
                 except (requests.RequestException, ValueError):
