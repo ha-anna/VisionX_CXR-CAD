@@ -153,7 +153,7 @@ async def predict(file: UploadFile = File(...)):
             score=scores[top_label],
             detected=False,
         ),
-        heatmap_base64=result["gradcam_overlay_png_base64"],
+        heatmap_base64=None if result["gradcam_empty"] else result["gradcam_overlay_png_base64"],
         inference_time_ms=(time.perf_counter() - start) * 1000,
     )
 

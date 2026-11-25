@@ -291,6 +291,9 @@ def analyze_ensemble(image_bytes, config, models_by_arch, lock):
         image_bytes, config, models_by_arch, lock, top_label
     )
 
+    if explanation["empty"]:
+        return scores, top_label, None
+
     buffer = io.BytesIO()
     explanation["overlay"].save(buffer, format="PNG")
     heatmap_base64 = base64.b64encode(buffer.getvalue()).decode("ascii")

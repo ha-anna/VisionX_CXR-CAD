@@ -73,6 +73,11 @@ KO = {
     "Disease to show in Grad-CAM": "Grad-CAM으로 확인할 질환",
     "Generating Grad-CAM…": "Grad-CAM 생성 중…",
     "Grad-CAM is unavailable for {disease}.": "{disease}의 Grad-CAM 히트맵을 표시할 수 없습니다.",
+    "The Grad-CAM overlay for {disease} could not be created. The scores are not affected. Select the finding again to retry.": "{disease}의 Grad-CAM 오버레이를 생성하지 못했습니다. 점수에는 영향이 없습니다. 다시 시도하려면 소견을 다시 선택하세요.",
+    "No Grad-CAM overlay for {disease}: no image region increased this score, so there is nothing to highlight. The score is still shown on the right.": "{disease}의 Grad-CAM 오버레이가 없습니다. 이 점수를 높인 영상 영역이 없어 강조할 부분이 없습니다. 점수는 오른쪽에서 확인할 수 있습니다.",
+    "Educational project, not for diagnosis. VisionX is a student capstone prototype; its results must not be used to make clinical decisions.": "교육용 프로젝트이며 진단용이 아닙니다. VisionX는 학생 캡스톤 프로토타입으로, 그 결과를 임상적 판단에 사용해서는 안 됩니다.",
+    "Scores are calibrated with temperature scaling and range from 0 to 1. A dot marks a finding above its disease-specific threshold.": "점수는 온도 스케일링으로 보정되었으며 0~1 범위입니다. 점 표시는 질환별 임계값을 초과한 소견입니다.",
+    "Scores are calibrated with temperature scaling and range from 0 to 1. No detection thresholds are applied yet, so no finding is marked as detected. Compare scores with each other, not with a fixed cut-off.": "점수는 온도 스케일링으로 보정되었으며 0~1 범위입니다. 아직 탐지 임계값이 적용되지 않아 탐지된 소견으로 표시되는 항목은 없습니다. 고정된 기준값이 아니라 점수끼리 비교하세요.",
     (
     "Warmer colors (yellow and red) show stronger positive contributions "
     "to the selected disease's score. Cooler colors (blue) show weaker "

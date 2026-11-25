@@ -26,6 +26,26 @@ def score_chart(scores, detections=()):
     )
 
 
+def gradcam_unavailable_notice(disease, failed):
+    """Explain why no overlay is shown; the scores are valid either way."""
+    if failed:
+        st.warning(
+            t(
+                "The Grad-CAM overlay for {disease} could not be created. The scores are not "
+                "affected. Select the finding again to retry.",
+                disease=disease,
+            )
+        )
+    else:
+        st.info(
+            t(
+                "No Grad-CAM overlay for {disease}: no image region increased this score, so "
+                "there is nothing to highlight. The score is still shown on the right.",
+                disease=disease,
+            )
+        )
+
+
 def render_images(image, result, image_focus=False, preview=False):
     if image is None:
         return
@@ -36,6 +56,7 @@ def render_images(image, result, image_focus=False, preview=False):
         disease = disease_name(selected_label)
 
     heatmap = None
+    gradcam_failed = bool(result) and result.get("gradcam_status") == "failed"
     if result and result.get("gradcam_heatmap"):
         try:
             heatmap = read_heatmap(result["gradcam_heatmap"])
@@ -43,6 +64,7 @@ def render_images(image, result, image_focus=False, preview=False):
                 heatmap = Image.blend(image, heatmap.resize(image.size), alpha=0.4)
         except (ValueError, OSError, binascii.Error, Image.DecompressionBombError):
             heatmap = None
+            gradcam_failed = True
 
     selection = "Compare"
     with compact_section("viewer-controls"):
@@ -72,7 +94,7 @@ def render_images(image, result, image_focus=False, preview=False):
             elif preview:
                 st.info(t("An explanation image is not available for this result."))
             else:
-                st.info(t("Grad-CAM is unavailable for {disease}.", disease=disease))
+                gradcam_unavailable_notice(disease, gradcam_failed)
 
     elif heatmap is not None and selection == "Explanation":
         st.image(heatmap, caption=overlay_caption, width="stretch")
@@ -108,9 +130,10 @@ def render_images(image, result, image_focus=False, preview=False):
 def render_detections(result, preview=False):
     with st.container(key="findings-summary", border=False):
         st.subheader(t("Example findings") if preview else t("Findings summary"), anchor=False)
-        caption(t("Scores above their configured disease thresholds."))
-        st.space(1)
         diseases = result["detected_diseases"]
+        if diseases:
+            caption(t("Scores above their configured disease thresholds."))
+        st.space(1)
 
         if diseases:
             chips = "".join(
@@ -152,13 +175,23 @@ def render_scores(result, preview=False):
             key="gradcam_disease",
         )
     score_chart(result["predictions"], result["detected_diseases"])
-    caption(
-        t(
-            "Scores range from 0 to 1; they are not disease probabilities. "
-            "A dot marks a detected finding. "
-            "Detection uses disease-specific thresholds from the API."
+    if preview:
+        caption(t("Illustrative scores; no model was called."))
+    elif result["detected_diseases"]:
+        caption(
+            t(
+                "Scores are calibrated with temperature scaling and range from 0 to 1. "
+                "A dot marks a finding above its disease-specific threshold."
+            )
         )
-    )
+    else:
+        caption(
+            t(
+                "Scores are calibrated with temperature scaling and range from 0 to 1. "
+                "No detection thresholds are applied yet, so no finding is marked as "
+                "detected. Compare scores with each other, not with a fixed cut-off."
+            )
+        )
     st.space(4)
 
 
