@@ -134,13 +134,11 @@ We are a team of Computer Science and Engineering students at Sogang University 
 **English Title:** Chest X-ray Multi-Disease Detection System (CXR-CAD)
 
 ### Members
-| Member | GitHub | Contribution |
-| --- | --- | --- |
-| Ha Anna Maria (Team Leader) | [ha-anna](https://github.com/ha-anna) | TODO-CONFIRM: project setup and workflow, Dev Container and Docker, Streamlit dashboard, dashboard–API–model integration, ensemble inference, disease-specific Grad-CAM, Render and Hugging Face deployment |
-| Maksutova Aibike | [bimoonity](https://github.com/bimoonity) | TODO-CONFIRM: NIH ChestX-ray14 dataset research, preprocessing pipeline documentation |
-| Zaripov Damir | [dkapro](https://github.com/dkapro) | TODO-CONFIRM: project dependencies, baseline data preparation and DenseNet-121 / Focal Loss training and evaluation scripts |
-| Mukhiddinova Malika | [likamuradovna](https://github.com/likamuradovna) | TODO-CONFIRM: FastAPI `/health` and `/predict` endpoints, requirements versions |
-| Sadullaeva Madina | [madina1727](https://github.com/madina1727) | TODO-CONFIRM: repository structure, pytest test suite, DICOM upload with de-identification, dashboard safety notices, README |
+- Ha Anna Maria (Team Leader) - [ha-anna](https://github.com/ha-anna)
+- Maksutova Aibike - [bimoonity](https://github.com/bimoonity)
+- Zaripov Damir - [dkapro](https://github.com/dkapro)
+- Mukhiddinova Malika - [likamuradovna](https://github.com/likamuradovna)
+- Sadullaeva Madina - [madina1727](https://github.com/madina1727)
 
 
 ## Dev Container setup
