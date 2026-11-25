@@ -3,8 +3,6 @@ Multi-label chest X-ray disease detection using NIH ChestX-ray14, DenseNet, Effi
 
 > **Educational project, not for diagnosis.** VisionX is a student capstone prototype. Its scores are based on NIH labels and must not be used for clinical decisions.
 
-**Try it:** [VisionX dashboard](TODO-DASHBOARD-URL) · [API status page](TODO-API-URL)
-
 ## Results
 
 Trained on NIH ChestX-ray14 (112,115 images from 30,805 patients after quality filtering). Patients are split 85% / 15% into train and a fixed test set, with 5-fold patient-wise cross-validation inside train; no patient appears in more than one set. Focal Loss with gamma 0 (plain weighted BCE) was chosen by validation AUROC.
