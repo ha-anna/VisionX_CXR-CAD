@@ -71,6 +71,13 @@ def main():
             preview = st.toggle(t("Show illustrative results"), value=False, key="preview_toggle")
             caption(t("Preview the interface without sending an image for analysis."))
             st.space(4)
+        notice(
+            "warning",
+            t(
+                "Educational project, not for diagnosis. VisionX is a student capstone "
+                "prototype; its results must not be used to make clinical decisions."
+            ),
+        )
         if preview:
             notice(
                 "info",
@@ -142,6 +149,7 @@ def main():
                         analysis["heatmaps_by_disease"] = {
                             top_disease: analysis["gradcam_heatmap"],
                         }
+                        analysis["gradcam_failed"] = []
                 except requests.Timeout:
                     notice("error", t("Analysis took too long. Please try again."))
                 except requests.RequestException:
@@ -185,11 +193,13 @@ def main():
                         )
                 except (requests.RequestException, ValueError):
                     heatmaps[disease] = None
+                    result["gradcam_failed"].append(disease)
 
             result = {
                 **result,
                 "gradcam_disease": disease,
                 "gradcam_heatmap": heatmaps[disease],
+                "gradcam_status": "failed" if disease in result["gradcam_failed"] else "ok",
             }
         if display_image is not None:
             with compact_section("image-panel"):
