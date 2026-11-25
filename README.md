@@ -1,6 +1,35 @@
 # VisionX_CXR-CAD
 Multi-label chest X-ray disease detection using NIH ChestX-ray14, DenseNet, EfficientNet, Grad-CAM, FastAPI, and Streamlit.
 
+> **Educational project, not for diagnosis.** VisionX is a student capstone prototype. Its scores are based on NIH labels and must not be used for clinical decisions.
+
+**Try it:** [VisionX dashboard](https://visionx-9fiu.onrender.com/) (upload a chest X-ray and review scores and Grad-CAM)
+
+**Live API:** https://visionx-cxr-cad.onrender.com (status page; health check at [`/health`](https://visionx-cxr-cad.onrender.com/health), interactive docs at [`/docs`](https://visionx-cxr-cad.onrender.com/docs)).
+
+## Results
+
+Trained on NIH ChestX-ray14 (112,115 images from 30,805 patients after quality filtering). Patients are split 85% / 15% into train and a fixed test set, with 5-fold patient-wise cross-validation inside train; no patient appears in more than one set. Focal Loss with gamma 0 (plain weighted BCE) was chosen by validation AUROC.
+
+**Fixed test set** (16,724 images, 4,621 patients; 14 diseases, mean over diseases):
+
+| Model | Mean AUROC | Mean AUPRC |
+| --- | --- | --- |
+| DenseNet-121, single fold | 0.830 ± 0.004 | 0.249 |
+| DenseNet-121, 5-fold average | 0.845 | 0.270 |
+| EfficientNet-B0, 5-fold average | 0.841 | 0.269 |
+| **Ensemble (DenseNet-121 + EfficientNet-B0, 10 models) with flip TTA** | **0.848** | **0.277** |
+
+| Check | Target | Result |
+| --- | --- | --- |
+| Mean AUROC | ≥ 0.80 | 0.848 |
+| Calibration (mean ECE) | ≤ 0.10 | 0.085 raw → 0.043 after per-class temperature scaling |
+| Subgroup gap (sex, age, view) | < 0.10 | largest gap 0.019 (age 60+) |
+| 5-fold validation AUROC | | DenseNet-121 0.832 ± 0.003 · EfficientNet-B0 0.827 ± 0.003 |
+| External check (CheXpert valid, 202 images, 7 shared diseases) | | 0.854 vs. 0.859 on NIH for the same diseases |
+
+Best and weakest diseases on the test set: Hernia 0.939, Emphysema 0.936, Cardiomegaly 0.921 · Infiltration 0.703, Nodule 0.767, Pneumonia 0.771. In 81 of 100 checked cases the Grad-CAM peak falls inside the lungs. The deployed API returns calibrated scores; detection thresholds are not applied yet.
+
 ## Project Structure
 
 ```text
@@ -21,6 +50,48 @@ models/         local weights and checkpoints — ignored by Git
 ```
 
 Datasets, model weights (`*.pt`, `*.pth`, `*.ckpt`, `*.onnx`), and generated outputs (`outputs/`, `predictions/`, `gradcam_outputs/`, `runs/`, `wandb/`) are excluded by `.gitignore`. Never commit patient data.
+
+## Run with Docker
+
+The API image downloads the trained ensemble from the team's private Hugging Face repository during the build, so you need a Hugging Face read token with access to it (ask the team leader) and the release values from [the deployment guide](docs/deployment.md#2-configure-the-render-api-service) (`HF_REPO_ID`, `HF_REVISION`, `MODEL_ARCHIVE_NAME`, `MODEL_ARCHIVE_SHA256`, `MODEL_BUNDLE_DIR`). Never commit the token.
+
+1. Start Docker Desktop. From the repository root, save the token in a file that Git ignores and set the release values:
+
+   ```bash
+   printf '%s' 'hf_your_token' > hf_token
+   export HF_REPO_ID=... HF_REVISION=... MODEL_ARCHIVE_NAME=... MODEL_ARCHIVE_SHA256=... MODEL_BUNDLE_DIR=/workspace/models/...
+   ```
+
+2. Build both images:
+
+   ```bash
+   docker build --secret id=hf_token,src=hf_token \
+     --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu \
+     --build-arg HF_REPO_ID --build-arg HF_REVISION --build-arg MODEL_ARCHIVE_NAME \
+     --build-arg MODEL_ARCHIVE_SHA256 --build-arg MODEL_BUNDLE_DIR \
+     -t visionx-api .
+   docker build -f Dockerfile.streamlit \
+     --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu \
+     -t visionx-dashboard .
+   ```
+
+3. Start the API, then the dashboard, on a shared network:
+
+   ```bash
+   docker network create visionx
+   docker run -d --name visionx-api --network visionx -p 127.0.0.1:8000:8000 \
+     -e MODEL_BUNDLE_DIR visionx-api \
+     python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+   docker run -d --name visionx-dashboard --network visionx -p 127.0.0.1:8501:8501 \
+     -e API_URL=http://visionx-api:8000 visionx-dashboard \
+     python -m streamlit run src/dashboard/app.py --server.address=0.0.0.0 --server.port=8501
+   ```
+
+4. Open http://localhost:8501 for the dashboard and http://localhost:8000/health for the API (it may take about a minute to load the 10 models). Upload a PNG, JPEG or DICOM chest X-ray. DICOM files have patient identifiers removed before inference.
+
+5. Stop everything with `docker rm -f visionx-dashboard visionx-api && docker network rm visionx`.
+
+To run without Docker, put an extracted bundle (a folder with `inference_config.json` and `models/`) under `models/`, set `MODEL_BUNDLE_DIR` in `.env` (see `.env.example`), and run `make api` and `make dashboard` in two terminals.
 
 ## Development commands
 
@@ -44,6 +115,8 @@ Run these from the repository root inside the Dev Container:
 | `make docker-down` | Stop and remove Docker Compose containers and networks |
 | `make docker-logs` | Follow logs from Docker Compose services |
 
+`make docker-build` and `make docker-up` use `compose.yaml`, which does not pass the Hugging Face token the API image now needs, so they currently fail; use the steps in [Run with Docker](#run-with-docker) instead.
+
 Run these commands from the project root. Docker commands require Docker to be running (for example, through Docker Desktop on macOS). Press `Ctrl+C` to stop following logs; the services will keep running.
 
 Ruff and mypy use the settings in `pyproject.toml`.
@@ -65,7 +138,7 @@ We are a team of Computer Science and Engineering students at Sogang University 
 **English Title:** Chest X-ray Multi-Disease Detection System (CXR-CAD)
 
 ### Members
-- Ha Anna Maria (Team Leader) - [ha-anna](https://github.com/ha-ana)
+- Ha Anna Maria (Team Leader) - [ha-anna](https://github.com/ha-anna)
 - Maksutova Aibike - [bimoonity](https://github.com/bimoonity)
 - Zaripov Damir - [dkapro](https://github.com/dkapro)
 - Mukhiddinova Malika - [likamuradovna](https://github.com/likamuradovna)
