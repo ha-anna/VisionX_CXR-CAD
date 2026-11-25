@@ -3,6 +3,8 @@ Multi-label chest X-ray disease detection using NIH ChestX-ray14, DenseNet, Effi
 
 > **Educational project, not for diagnosis.** VisionX is a student capstone prototype. Its scores are based on NIH labels and must not be used for clinical decisions.
 
+**Try it:** [VisionX dashboard](https://visionx-9fiu.onrender.com/) (upload a chest X-ray and review scores and Grad-CAM)
+
 **Live API:** https://visionx-cxr-cad.onrender.com (status page; health check at [`/health`](https://visionx-cxr-cad.onrender.com/health), interactive docs at [`/docs`](https://visionx-cxr-cad.onrender.com/docs)).
 
 ## Results
