@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI):
 
     print(f"Loading model bundle: {bundle_dir}")
 
+    app.state.youden_thresholds = {}
+
     if (bundle_dir / "inference_config.json").is_file():
         app.state.predictor = None
         app.state.ensemble = load_ensemble_models(bundle_dir, device="cpu")
