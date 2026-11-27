@@ -1,4 +1,4 @@
-"""VisionX display themes. All visual colors are defined in PALETTES."""
+"""VisionX dashboard styles and theme palettes."""
 
 import hashlib
 import html
@@ -18,7 +18,9 @@ PALETTES = {
         "hover": "#06676B",
         "on-accent": "#FFFFFF",
         "track": "#DDE8EC",
-        "bar": "#087F83",
+        "bar-high": "#BF4147",
+        "bar-middle": "#DFAC22",
+        "bar-low": "#26845C",
         "chip": "#E4F3F2",
         "chip-text": "#075E62",
         "disabled": "#DDE6EA",
@@ -43,7 +45,9 @@ PALETTES = {
         "hover": "#8DE3DD",
         "on-accent": "#082F36",
         "track": "#294451",
-        "bar": "#60D2CB",
+        "bar-high": "#F37B81",
+        "bar-middle": "#F0C350",
+        "bar-low": "#65C897",
         "chip": "#1A4145",
         "chip-text": "#9AE7DD",
         "disabled": "#293E4A",
@@ -74,7 +78,6 @@ header[data-testid="stHeader"] {display:none;}
 [data-testid="stRadio"] label, [data-testid="stSpinner"],
 [data-testid="stUploadedFile"] {color:var(--vx-text);}
 [data-testid="stMain"] h1 {font-weight:600;letter-spacing:-.04em;}
-/* Use Streamlit's native heading sizes and hierarchy. */
 .vx-title a {color:var(--vx-text);text-decoration:none;}
 .vx-title a:hover {color:var(--vx-accent);}
 [data-testid="stMain"] .vx-caption {
@@ -93,11 +96,10 @@ header[data-testid="stHeader"] {display:none;}
     background:var(--vx-surface);
     box-sizing:border-box;
 }
+.st-key-vx-compact-image-panel {padding-bottom:1.5rem;}
 .st-key-vx-compact-explanation {padding-top:.5rem;}
 .st-key-vx-compact-sample-credit p {font-size:.75rem;color:var(--vx-muted) !important;line-height:1.5;}
-/* Native layout, spacing and borders are left intact. Only colors change. */
 [data-testid="stExpander"] details {background:var(--vx-surface);border-color:var(--vx-line);}
-/* Override only colors; native expander dimensions and padding stay intact. */
 [data-testid="stExpander"] summary,
 [data-testid="stExpander"] details[open] > summary,
 [data-testid="stExpander"] summary:hover,
@@ -134,10 +136,9 @@ header[data-testid="stHeader"] {display:none;}
     line-height:1.5;
 }
 [data-testid="stFileUploaderDropzone"] {background:var(--vx-soft);border-color:var(--vx-line);}
-[data-testid="stFileUploaderDropzone"] small,
 [data-testid="stFileUploaderDropzone"] span,
 [data-testid="stFileUploaderDropzone"] p {color:var(--vx-text) !important;opacity:1;}
-[data-testid="stFileUploaderDropzone"] small {color:var(--vx-muted) !important;}
+[data-testid="stFileUploaderDropzone"] small {color:var(--vx-muted) !important;opacity:1;}
 [data-testid="stBaseButton-primary"] {background:var(--vx-accent);color:var(--vx-on-accent);border-color:var(--vx-accent);}
 [data-testid="stBaseButton-primary"] p {color:var(--vx-on-accent) !important;}
 [data-testid="stBaseButton-primary"]:hover:not(:disabled) {background:var(--vx-hover);border-color:var(--vx-hover);}
@@ -149,17 +150,15 @@ header[data-testid="stHeader"] {display:none;}
 button:focus-visible, summary:focus-visible {outline:2px solid var(--vx-accent);outline-offset:2px;}
 [data-testid="stImageCaption"] {color:var(--vx-muted);}
 hr {border-color:var(--vx-line);}
-h3 {padding-bottom: 20.4rem;}
 .vx-score, .vx-axis-row {display:grid;grid-template-columns:145px minmax(40px,1fr) 42px;gap:10px;align-items:center;}
 .vx-score {font-size:13px;margin:10px 0;}
 .vx-track {height:7px;background:var(--vx-track);border-radius:3px;overflow:hidden;}
-.vx-fill {height:100%;background:var(--vx-bar);border-radius:3px;}
+.vx-fill {height:100%;border-radius:3px;}
+.vx-fill--high {background:var(--vx-bar-high);}
+.vx-fill--middle {background:var(--vx-bar-middle);}
+.vx-fill--low {background:var(--vx-bar-low);}
 .vx-value {text-align:right;font-variant-numeric:tabular-nums;}
 .vx-axis {display:flex;justify-content:space-between;font-size:11px;color:var(--vx-muted);margin-bottom:4px;}
-.vx-chips {display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;}
-.st-key-vx-compact-image-panel {
-    padding-bottom: 1.5rem;
-}
 .vx-cam-legend {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -190,7 +189,38 @@ h3 {padding-bottom: 20.4rem;}
     border-radius: 999px;
     background: linear-gradient(90deg, #1554c0, #29ccc7, #f4d44d, #d83531);
 }
+.vx-chips {display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;}
 .vx-chip {background:var(--vx-chip);color:var(--vx-chip-text);border:1px solid var(--vx-line);padding:4px 8px;border-radius:5px;font-size:13px;}
+.vx-score-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 12px 0 6px;
+    color: var(--vx-muted);
+    font-size: 12px;
+}
+
+.vx-score-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.vx-score-legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.vx-gradcam-notice {
+    background-color: var(--vx-info-bg);
+    color: var(--vx-info-text);
+    border: 1px solid var(--vx-line);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    overflow-wrap: anywhere;
+}
 @media(max-width:640px) {
     [data-testid="stMainBlockContainer"], .block-container {padding:1rem .75rem 2rem;}
     .vx-score, .vx-axis-row {grid-template-columns:120px minmax(30px,1fr) 38px;gap:7px;}
@@ -199,11 +229,11 @@ h3 {padding-bottom: 20.4rem;}
 
 
 def apply_styles(image_focus=False):
+    """Apply the selected theme. The dashboard controls image focus through its layout."""
     theme = st.session_state.get("ui_theme", "light")
     palette = PALETTES.get(theme, PALETTES["light"])
     variables = ";".join(f"--vx-{key}:{value}" for key, value in palette.items())
     css = ":root{" + variables + ";}" + CSS
-    # Image focus stacks the content; it does not widen the page.
     for kind in ("warning", "error", "success", "info"):
         selector = f'[class*="st-key-vx-notice-{kind}-"] [data-testid="stAlert"]'
         css += f"""
