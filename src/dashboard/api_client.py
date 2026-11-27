@@ -49,6 +49,7 @@ def prediction_request(raw, name, mime):
         "top1_disease": data["top1"]["name"],
         "gradcam_heatmap": data["heatmap_base64"],
         "inference_time_ms": data["inference_time_ms"],
+        "thresholds_applied": data.get("thresholds_applied", False),
     }
 
     return validate_response(dashboard_data)

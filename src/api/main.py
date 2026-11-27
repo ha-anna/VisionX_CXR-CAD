@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from src.api.schemas import (
+    Detection,
     HealthResponse,
     PredictResponse,
     Top1,
@@ -41,9 +42,25 @@ async def lifespan(app: FastAPI):
 
     print(f"Loading model bundle: {bundle_dir}")
 
+    app.state.youden_thresholds = {}
+
     if (bundle_dir / "inference_config.json").is_file():
         app.state.predictor = None
         app.state.ensemble = load_ensemble_models(bundle_dir, device="cpu")
+        config, _ = app.state.ensemble
+        calibrated_thresholds = config.get("thresholds_calibrated")
+        if calibrated_thresholds is not None:
+            if set(calibrated_thresholds) != set(config["class_names"]):
+                raise ValueError("Calibrated thresholds must cover every ensemble label.")
+
+            cutoffs = {label: points["Youden J"] for label, points in calibrated_thresholds.items()}
+            if any(
+                type(cutoff) not in (int, float) or not 0 <= cutoff <= 1
+                for cutoff in cutoffs.values()
+            ):
+                raise ValueError("Youden thresholds must be numeric values between 0 and 1.")
+
+            app.state.youden_thresholds = cutoffs
     else:
         for filename in ("model.pth", "config.json"):
             if not (bundle_dir / filename).is_file():
@@ -119,14 +136,26 @@ async def predict(file: UploadFile = File(...)):
                 status_code=503, detail="The model could not process the image."
             ) from exc
 
+        cutoffs = app.state.youden_thresholds
+        detections = [
+            Detection(name=label, score=score)
+            for label, score in scores.items()
+            if label in cutoffs and score >= cutoffs[label]
+        ]
+
         return PredictResponse(
             model_version=app.state.model_version,
             is_stub=False,
             scores=scores,
-            detected_diseases=[],
-            top1=Top1(name=top_label, score=scores[top_label], detected=False),
+            detected_diseases=detections,
+            top1=Top1(
+                name=top_label,
+                score=scores[top_label],
+                detected=any(detection.name == top_label for detection in detections),
+            ),
             heatmap_base64=heatmap_base64,
             inference_time_ms=(time.perf_counter() - start) * 1000,
+            thresholds_applied=bool(cutoffs),
         )
 
     try:
