@@ -122,7 +122,7 @@ def render_images(image, result, image_focus=False, preview=False):
 def render_detections(result, preview=False):
     with st.container(key="findings-summary", border=False):
         st.subheader(t("Example findings") if preview else t("Findings summary"), anchor=False)
-        caption(t("Scores above their configured disease thresholds."))
+        caption(t("Findings that met their detection thresholds."))
         st.space(1)
         diseases = result["detected_diseases"]
 

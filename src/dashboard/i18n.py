@@ -53,7 +53,7 @@ KO = {
         "이 색상 오버레이는 화면 구성 예시이며 Grad-CAM 결과가 아닙니다."
     ),
     "Example findings": "예시 소견",
-    "Scores above their configured disease thresholds.": "설정된 질환별 임계값을 초과한 항목입니다.",
+    "Findings that met their detection thresholds.": "점수가 소견별 탐지 임계값 이상인 항목입니다.",
     (
         "Detection thresholds are not configured. "
         "Model scores and the Grad-CAM overlay are shown below."
