@@ -36,6 +36,7 @@ class PredictResponse(BaseModel):
     top1: Top1
     heatmap_base64: str | None
     inference_time_ms: float
+    thresholds_applied: bool = False
 
 
 class HealthResponse(BaseModel):

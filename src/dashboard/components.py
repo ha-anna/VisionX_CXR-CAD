@@ -13,12 +13,20 @@ def score_chart(scores, detections=()):
     rows = []
     for name, score in sorted(scores.items(), key=lambda item: item[1], reverse=True):
         label = html.escape(disease_name(name))
+        if score >= 0.50:
+            band = "high"
+        elif score >= 0.30:
+            band = "middle"
+        else:
+            band = "low"
+
         rows.append(
             f'<div class="vx-score"><span>{label}{" ●" if name in detections else ""}</span>'
-            f'<div class="vx-track"><div class="vx-fill" '
+            f'<div class="vx-track"><div class="vx-fill vx-fill--{band}" '
             f'style="width:{score * 100:.3f}%"></div></div>'
             f'<span class="vx-value">{score:.2f}</span></div>'
         )
+
     st.markdown(
         '<div class="vx-axis-row"><span></span><div class="vx-axis"><span>0.00</span>'
         "<span>0.50</span><span>1.00</span></div><span></span></div>" + "".join(rows),
@@ -69,10 +77,16 @@ def render_images(image, result, image_focus=False, preview=False):
         with explanation_col:
             if heatmap is not None:
                 st.image(heatmap, caption=overlay_caption, width="stretch")
-            elif preview:
-                st.info(t("An explanation image is not available for this result."))
             else:
-                st.info(t("Grad-CAM is unavailable for {disease}.", disease=disease))
+                message = (
+                    t("An explanation image is not available for this result.")
+                    if preview
+                    else t("Grad-CAM is unavailable for {disease}.", disease=disease)
+                )
+                st.markdown(
+                    f'<div class="vx-gradcam-notice" role="status">{html.escape(message)}</div>',
+                    unsafe_allow_html=True,
+                )
 
     elif heatmap is not None and selection == "Explanation":
         st.image(heatmap, caption=overlay_caption, width="stretch")
@@ -118,6 +132,8 @@ def render_detections(result, preview=False):
                 for name in diseases
             )
             st.markdown(f'<div class="vx-chips">{chips}</div>', unsafe_allow_html=True)
+        elif result.get("thresholds_applied"):
+            st.write(t("No finding met its detection threshold."))
         else:
             st.write(
                 t(
@@ -152,13 +168,22 @@ def render_scores(result, preview=False):
             key="gradcam_disease",
         )
     score_chart(result["predictions"], result["detected_diseases"])
-    caption(
-        t(
-            "Scores range from 0 to 1; they are not disease probabilities. "
-            "A dot marks a detected finding. "
-            "Detection uses disease-specific thresholds from the API."
-        )
+    bands = (
+        ("low", t("Green · Below 0.30")),
+        ("middle", t("Yellow · 0.30 to below 0.50")),
+        ("high", t("Red · 0.50 and above")),
     )
+    legend_items = "".join(
+        '<span class="vx-score-legend-item">'
+        f'<span class="vx-score-legend-dot vx-fill--{band}" aria-hidden="true"></span>'
+        f"{html.escape(label)}</span>"
+        for band, label in bands
+    )
+    st.markdown(
+        f'<div class="vx-score-legend">{legend_items}</div>',
+        unsafe_allow_html=True,
+    )
+    caption(t("A dot marks a finding that met its own detection threshold."))
     st.space(4)
 
 
